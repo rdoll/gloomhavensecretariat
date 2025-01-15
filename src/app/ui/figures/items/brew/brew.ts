@@ -8,8 +8,10 @@ import { CountIdentifier, Identifier } from "src/app/game/model/data/Identifier"
 import { ItemData } from "src/app/game/model/data/ItemData";
 import { LootType } from "src/app/game/model/data/Loot";
 import { ItemDialogComponent } from "../dialog/item-dialog";
+import { ghsDialogClosingHelper } from "src/app/ui/helper/Static";
 
 @Component({
+    standalone: false,
     selector: 'ghs-items-brew',
     templateUrl: 'brew.html',
     styleUrls: ['./brew.scss']
@@ -33,7 +35,7 @@ export class ItemsBrewDialog implements OnInit, OnDestroy {
     constructor(@Inject(DIALOG_DATA) public character: Character, private dialogRef: DialogRef, private dialog: Dialog) {
         this.brewing = 0;
         if (gameManager.fhRules() && gameManager.game.party.campaignMode && gameManager.game.party.buildings) {
-            const alchemist = gameManager.game.party.buildings.find((buildingModel) => buildingModel.name == 'alchemist' && buildingModel.state != 'wrecked');
+            const alchemist = gameManager.game.party.buildings.find((buildingModel) => buildingModel.name == 'alchemist');
             if (alchemist && alchemist.level) {
                 this.brewing = alchemist.level < 3 ? 2 : 3;
             }
@@ -116,29 +118,31 @@ export class ItemsBrewDialog implements OnInit, OnDestroy {
         target[type] = (target[type] || 0) + 1;
     }
 
-    brew() {
-        this.brewed = this.getItem();
-        if (this.brewed) {
-            if (this.otherCharacter) {
-                this.brewInternal(this.otherCharacter, this.brewed);
-            } else if (this.character.progress.items.find((identifier) => this.brewed && identifier.name == '' + this.brewed.id && identifier.edition == this.brewed.edition)) {
-                this.otherCharacters = gameManager.game.figures.filter((figure) => figure instanceof Character && figure != this.character && !figure.progress.items.find((identifier) => this.brewed && identifier.name == '' + this.brewed.id && identifier.edition == this.brewed.edition)).map((figure) => figure as Character);
-                this.noChar = this.otherCharacters.length == 0;
-                if (this.otherCharacters.length == 1) {
-                    this.otherCharacter = this.otherCharacters[0];
+    brew(force: boolean = false) {
+        if (!gameManager.itemManager.brewingDisabled() || force) {
+            this.brewed = this.getItem();
+            if (this.brewed) {
+                if (this.otherCharacter) {
+                    this.brewInternal(this.otherCharacter, this.brewed);
+                } else if (this.character.progress.items.find((identifier) => this.brewed && identifier.name == '' + this.brewed.id && identifier.edition == this.brewed.edition)) {
+                    this.otherCharacters = gameManager.game.figures.filter((figure) => figure instanceof Character && figure != this.character && !figure.progress.items.find((identifier) => this.brewed && identifier.name == '' + this.brewed.id && identifier.edition == this.brewed.edition)).map((figure) => figure as Character);
+                    this.noChar = this.otherCharacters.length == 0;
+                    if (this.otherCharacters.length == 1) {
+                        this.otherCharacter = this.otherCharacters[0];
+                    }
+                } else {
+                    this.brewInternal(this.character, this.brewed);
+                    this.otherCharacters = [];
+                    this.otherCharacter = undefined;
+                    this.noChar = false;
                 }
-            } else {
-                this.brewInternal(this.character, this.brewed);
-                this.otherCharacters = [];
-                this.otherCharacter = undefined;
-                this.noChar = false;
             }
         }
     }
 
     brewInternal(character: Character, itemData: ItemData) {
         this.otherCharacter = character != this.character ? character : undefined
-        gameManager.stateManager.before(!this.otherCharacter ? 'brewPotion' : 'brewPotionOther', this.character.name, '' + itemData.id, itemData.name, character.name);
+        gameManager.stateManager.before(!this.otherCharacter ? 'brewPotion' : 'brewPotionOther', gameManager.characterManager.characterName(this.character), itemData.id, itemData.edition, this.otherCharacter ? gameManager.characterManager.characterName(this.otherCharacter) : '');
         this.herbs.forEach((herb) => {
             if (this.fhSupportSpent[herb]) {
                 gameManager.game.party.loot[herb] = (gameManager.game.party.loot[herb] || 0) - (this.fhSupportSpent[herb] || 0);
@@ -170,12 +174,14 @@ export class ItemsBrewDialog implements OnInit, OnDestroy {
 
     openItemDialog() {
         this.dialog.open(ItemDialogComponent, {
+            panelClass: ['fullscreen-panel'],
+            disableClose: true,
             data: { item: this.brewed || this.item }
         })
     }
 
     close() {
-        this.dialogRef.close();
+        ghsDialogClosingHelper(this.dialogRef);
     }
 
 }

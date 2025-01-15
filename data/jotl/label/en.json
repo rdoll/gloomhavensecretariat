@@ -1,6 +1,12 @@
 {
   "character": {
-    "demolitionist": "Demolitionist",
+    "demolitionist": {
+      ".": "Demolitionist",
+      "mech": {
+        ".": "Mech Suit",
+        "hint": "Your maximum hit point value is increased by 5. Heal %game.action.heal% 10, self."
+      }
+    },
     "hatchet": "Hatchet",
     "red-guard": "Red Guard",
     "voidwarden": "Voidwarden"
@@ -247,16 +253,23 @@
         "3": "all adjacent figures suffer %game.damage:3%",
         "4": "all adjacent figures suffer %game.damage:4%"
       },
+      "rat-monstrosity-16-2": {
+        "1": "If any figure dies or become exhausted due to the damage"
+      },
       "basic-vermling-raider": {
         "1": "Shuffle this deck at the end of the round.",
         "2": "They will move to avoid being adjacent to their focus.",
         "3": "They are not moving this round.",
         "4": "This is exactly how they acted last scenario."
-      }
-    },
-    "perks": {
+      },
       "demolitionist": {
         "1": "All adjacent enemies suffer %game.damage:1%"
+      },
+      "flowChartGroup": {
+        "intro": "Intro",
+        "main": "Main",
+        "city-events": "City Events",
+        "characters": "Characters"
       }
     }
   }

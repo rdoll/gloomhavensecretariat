@@ -5,7 +5,12 @@ export class StorageManager {
 
   db: IDBDatabase | undefined;
 
-  init(): Promise<any> {
+  async init(): Promise<any> {
+    const persistent = await navigator.storage.persist();
+    if (!persistent) {
+      console.warn("Storage may be cleared by the UA under storage pressure.");
+    }
+
     return new Promise<any>((resolve, reject) => {
       if (window.indexedDB) {
         const request: IDBOpenDBRequest = window.indexedDB.open('ghs-db', 1);
@@ -64,7 +69,11 @@ export class StorageManager {
         count++;
         backup = localStorage.getItem("ghs-game-backup-" + count);
       }
-      localStorage.setItem("ghs-game-backup-" + count, JSON.stringify(gameModel));
+      try {
+        localStorage.setItem("ghs-game-backup-" + count, JSON.stringify(gameModel));
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -108,8 +117,13 @@ export class StorageManager {
           reject();
         };
       } else {
-        localStorage.setItem("ghs-" + store, JSON.stringify(object));
-        resolve();
+        try {
+          localStorage.setItem("ghs-" + store, JSON.stringify(object));
+          resolve();
+        } catch (e) {
+          console.error(e);
+          reject();
+        }
       }
     })
   }
@@ -206,10 +220,16 @@ export class StorageManager {
           const object = objects[index];
           await this.write(store, undefined, object).catch(() => reject());
         };
+        resolve();
       } else {
-        localStorage.setItem("ghs-" + store, JSON.stringify(objects));
+        try {
+          localStorage.setItem("ghs-" + store, JSON.stringify(objects));
+          resolve();
+        } catch (e) {
+          console.error(e);
+          reject();
+        }
       }
-      resolve();
     })
   }
 
@@ -308,7 +328,7 @@ export class StorageManager {
       document.body.appendChild(downloadButton);
       downloadButton.click();
       document.body.removeChild(downloadButton);
-    } catch {
+    } catch (e) {
       console.warn("Could not read datadump");
     }
 

@@ -5,11 +5,25 @@
     "eclipse": "Nightshroud",
     "lightning": {
       ".": "Berserker",
-      "overheal": "%game.characterIconColored.lightning% Heal up to 26 HP"
+      "blood-pact": {
+        ".": "Blood Pact",
+        "hint": "Suffer %game.damage:1% at the start of each of your turns."
+      },
+      "careless-charge": {
+        ".": "Careless Charge",
+        "hint": "You are immune to all negative conditions."
+      },
+      "unbridled-power": {
+        ".": "Unbridled Power",
+        "hint": "You may overheal to a maximum of 26 hit points, but your maximum hit point value."
+      }
     },
     "music-note": {
       ".": "Soothsinger",
-      "song_active": "%game.characterIconColored.music-note% Song Active"
+      "song_active": {
+        ".": "%game.characterIconColored.music-note% Song Active",
+        "hint": "Gain 1 XP at start of each of your turns."
+      }
     },
     "saw": "Sawbones",
     "squidface": "Plagueherald",
@@ -506,7 +520,7 @@
       ".": "Wave Crest"
     },
     "gh-112": {
-      "1": "During your melee attack, add +2 %game.action.attack% and %game.condition.pierce% 2 to the entire Attack action",
+      "1": "During your melee attack, add +2 %game.action.attack% and %game.action.pierce% 2 to the entire Attack action",
       ".": "Ancient Drill"
     },
     "gh-113": {
@@ -756,6 +770,21 @@
   "treasures": {
     "gh": {
       "75": "Cryptogram Found (See scenario book page 121)"
+    }
+  },
+  "custom": {
+    "gh": {
+      "circles": {
+        "1": "when %game.action.attack% performed",
+        "2": "at end of turn"
+      },
+      "triangles": {
+        "1": "You may perform Attack actions as if you occupy the summon's hex.",
+        "2": "when %game.action.attack% performed"
+      },
+      "two-mini": {
+        "1": "All adjacent allies add +2 %game.action.attack% to all their attacks."
+      }
     }
   }
 }

@@ -1,3 +1,4 @@
+import { AttackModifier } from "./AttackModifier";
 import { CharacterSpecialAction, CharacterStat } from "./CharacterStat";
 import { Editional } from "./Editional";
 import { FigureError } from "./FigureError";
@@ -56,11 +57,15 @@ export class CharacterData implements Editional, Spoilable {
 
   deck: string = "";
 
+  perkWarning: boolean = false;
   perks: Perk[] = [];
 
   additionalModifier: PerkCard[] = [];
 
   masteries: string[] = [];
+
+  bb: boolean = false;
+  amTables: (AttackModifier | String)[][] = [];
 
   // from Editional
   edition: string = "";
@@ -95,17 +100,20 @@ export class CharacterData implements Editional, Spoilable {
       this.thumbnail = characterData.thumbnail || undefined;
       this.thumbnailUrl = characterData.thumbnailUrl || undefined;
       this.noThumbnail = characterData.noThumbnail;
-      this.color = characterData.color || "#00000";
+      this.color = characterData.color || "#aaaaaa";
       this.marker = characterData.marker || false;
       this.spoiler = characterData.spoiler || false;
       this.specialActions = characterData.specialActions || [];
       this.locked = characterData.locked || false;
       this.deck = characterData.deck || "";
+      this.perkWarning = characterData.perkWarning;
       this.perks = characterData.perks || [];
       this.additionalModifier = characterData.additionalModifier || [];
       this.masteries = characterData.masteries || [];
       this.replace = characterData.replace || false;
       this.merge = characterData.merge || false;
+      this.bb = characterData.bb || false;
+      this.amTables = characterData.amTables || [];
     }
   }
 } 

@@ -5,6 +5,13 @@
   "edition": "jotl",
   "handSize": 9,
   "color": "#e5a26f",
+  "specialActions": [
+    {
+      "name": "mech",
+      "level": 5,
+      "expire": true
+    }
+  ],
   "stats": [
     {
       "level": 1,
@@ -205,7 +212,7 @@
             "effects": [
               {
                 "type": "custom",
-                "value": "%data.custom.perks.demolitionist.1%"
+                "value": "%data.custom.jotl.demolitionist.1%"
               }
             ]
           }

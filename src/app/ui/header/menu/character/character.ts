@@ -1,16 +1,19 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, EventEmitter, OnInit, Output } from "@angular/core";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
-import { settingsManager, SettingsManager } from "src/app/game/businesslogic/SettingsManager";
+import { SettingsManager, settingsManager } from "src/app/game/businesslogic/SettingsManager";
 import { Character } from "src/app/game/model/Character";
 import { CharacterData } from "src/app/game/model/data/CharacterData";
 import { ghsTextSearch } from "src/app/ui/helper/Static";
 
 @Component({
+	standalone: false,
   selector: 'ghs-character-menu',
   templateUrl: 'character.html',
   styleUrls: ['../menu.scss', 'character.scss']
 })
 export class CharacterMenuComponent implements OnInit {
+
+  @Output() close = new EventEmitter();
 
   gameManager: GameManager = gameManager;
   settingsManager: SettingsManager = settingsManager;
@@ -116,11 +119,16 @@ export class CharacterMenuComponent implements OnInit {
     gameManager.stateManager.before("addChar", "data.character." + characterData.name);
     gameManager.characterManager.addCharacter(characterData, this.characterLevel);
     gameManager.stateManager.after();
+    if (gameManager.bbRules()) {
+      this.close.emit();
+    }
   }
 
   hasCharacter(characterData: CharacterData) {
     return gameManager.game.figures.some((figure) => {
       return figure instanceof Character && characterData.name == figure.name && characterData.edition == figure.edition;
+    }) || gameManager.game.party.availableCharacters && gameManager.game.party.availableCharacters.some((availableCharacter) => {
+      return characterData.name == availableCharacter.name && characterData.edition == availableCharacter.edition;
     })
   }
 

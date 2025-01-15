@@ -1,17 +1,21 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ConnectionPositionPair, Overlay } from '@angular/cdk/overlay';
 import { Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { gameManager, GameManager } from 'src/app/game/businesslogic/GameManager';
 import { settingsManager, SettingsManager } from 'src/app/game/businesslogic/SettingsManager';
 import { Character } from 'src/app/game/model/Character';
 import { Element } from 'src/app/game/model/data/Element';
-import { GameState } from 'src/app/game/model/Game';
+import { GameClockTimestamp, GameState } from 'src/app/game/model/Game';
 import { Monster } from 'src/app/game/model/Monster';
-import { MainMenuComponent, SubMenu } from './menu/menu';
-import { Subscription } from 'rxjs';
 import { EventEffectsDialog } from '../figures/character/event-effects/event-effects';
+import { StablesComponent } from '../figures/party/buildings/stables/stables';
+import { GameClockDialogComponent } from './game-clock/game-clock';
+import { MainMenuComponent, SubMenu } from './menu/menu';
+import { PartySheetComponent } from './party/party-sheet';
 
 @Component({
+	standalone: false,
   selector: 'ghs-header',
   templateUrl: './header.html',
   styleUrls: ['./header.scss']
@@ -20,6 +24,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   @Input() standalone: boolean = false;
   @ViewChild('mainMenuButton') mainMenuButton!: ElementRef;
+  @ViewChild('partySheet') partySheet!: PartySheetComponent;
   gameManager: GameManager = gameManager;
   settingsManager: SettingsManager = settingsManager;
   GameState = GameState;
@@ -32,6 +37,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   init: boolean = false;
   hintState: string = "";
+
+  lastGameClockTimestamp: GameClockTimestamp | undefined;
+  overallGameClock: number = 0;
+  currentGameClock: number = 0;
+  gameClockInterval: any;
 
   constructor(private dialog: Dialog, private overlay: Overlay) { }
 
@@ -49,6 +59,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
             this.init = true;
           }, !settingsManager.settings.animations ? 0 : 500);
         }
+
+        this.updateClock();
       }
     })
   }
@@ -58,6 +70,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.uiChangeSubscription) {
       this.uiChangeSubscription.unsubscribe();
+    }
+    if (this.gameClockInterval) {
+      clearInterval(this.gameClockInterval);
     }
   }
 
@@ -88,9 +103,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     return "";
   }
 
-  openMenu(event: any, menu: SubMenu | undefined = undefined) {
+  openMenu(menu: SubMenu | undefined = undefined) {
     this.dialog.open(MainMenuComponent, {
-      panelClass: 'dialog',
+      panelClass: ['dialog'],
       data: { subMenu: menu != undefined ? menu : SubMenu.main, standalone: this.standalone },
       maxWidth: '90vw',
       positionStrategy: this.overlay.position().flexibleConnectedTo(this.mainMenuButton).withPositions([
@@ -101,8 +116,40 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   openEventEffects() {
-    this.dialog.open(EventEffectsDialog, { panelClass: 'dialog', data: gameManager.game.round > 0 || gameManager.game.state == GameState.next });
+    this.dialog.open(EventEffectsDialog, {
+      panelClass: ['dialog'],
+      data: gameManager.game.round > 0 || gameManager.game.state == GameState.next
+    });
   }
 
+  openPets() {
+    this.dialog.open(StablesComponent, {
+      panelClass: ['dialog']
+    })
+  }
+
+  updateClock() {
+    this.lastGameClockTimestamp = gameManager.game.gameClock.length ? gameManager.game.gameClock[0] : undefined;
+    this.overallGameClock = gameManager.game.gameClock.length ? gameManager.game.gameClock.map((value) => ((value.clockOut || new Date().getTime()) - value.clockIn) / 1000).reduce((a, b) => a + b, 0) : 0;
+    this.currentGameClock = this.lastGameClockTimestamp && !this.lastGameClockTimestamp.clockOut ? ((new Date().getTime()) - this.lastGameClockTimestamp.clockIn) / 1000 : 0;
+
+    if (!this.gameClockInterval) {
+      this.gameClockInterval = setInterval(() => {
+        this.updateClock();
+      }, 1000);
+    }
+  }
+
+  openGameClockDialog() {
+    this.dialog.open(GameClockDialogComponent, {
+      panelClass: ['dialog']
+    });
+  }
+
+  toggleGameClock() {
+    gameManager.stateManager.before('gameClock.' + (this.lastGameClockTimestamp && !this.lastGameClockTimestamp.clockOut ? 'clockOut' : 'clockIn'));
+    gameManager.toggleGameClock();
+    gameManager.stateManager.after();
+  }
 }
 

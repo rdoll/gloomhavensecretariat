@@ -9,13 +9,52 @@
       "regular": "Regular",
       "over": "Over"
     },
-    "fist": "Frozen Fist",
-    "kelp": "Deepwraith",
+    "fist": {
+      ".": "Frozen Fist",
+      "gift-of-the-mountain": {
+        ".": "Gift of the Mountain",
+        "hint": "At end of each of your turns, perform: %game.action.heal% 2, self"
+      },
+      "one-with-the-mountain": {
+        ".": "One with the Mountain",
+        "hint": "Whenever you do not have %game.condition.regenerate%, gain %game.condition.regenerate%."
+      }
+    },
+    "kelp": {
+      ".": "Deepwraith",
+      "trophy_tokens": {
+        ".": "Perk 11",
+        "hint": "%data.custom.fh.kelp.4%"
+      }
+    },
     "meteor": "Pyroclast",
-    "prism": "HIVE",
+    "prism": {
+      ".": "HIVE",
+      "prism_mode": "%data.characterToken.prism.mode% Mode Token",
+      "repair_mode": {
+        ".": "Reconstructive Aid",
+        "hint": "%data.characterToken.prism.mode% Repair Drone Mode: At the start of each of your turns, perform: %game.action.heal% 2, self"
+      }
+    },
     "shackles": "Pain Conduit",
-    "shards": "Shattersong",
-    "snowflake": "Snowdancer",
+    "shards": {
+      ".": "Shattersong",
+      "extra_resonance_tokens": {
+        ".": "Perk 10",
+        "hint": "%data.custom.fh.shards.5%"
+      },
+      "resonance_tokens": {
+        ".": "%data.characterToken.shards.resonance% Resonance Tokens",
+        "hint": "At the end of each of your turns, you gain one %data.characterToken.shards.resonance%"
+      }
+    },
+    "snowflake": {
+      ".": "Snowdancer",
+      "muddle-monster": {
+        ".": "Perk 9",
+        "hint": "%data.custom.fh.snowflake.4%"
+      }
+    },
     "trap": "Trapper"
   },
   "summon": {
@@ -59,6 +98,9 @@
     "trapping-unit": "Trapping Unit",
     "white-owl": "White Owl",
     "wraith": "Wraith"
+  },
+  "campaignSticker": {
+    "42-temple": "Temple"
   },
   "items": {
     "fh-1": {
@@ -554,7 +596,7 @@
       ".": "Warden's Robes"
     },
     "fh-123": {
-      "1": "When you are attacked, before drawing an attack modifier car, the attacker gains disadvantage on the attack.",
+      "1": "When you are attacked, before drawing an attack modifier card, the attacker gains disadvantage on the attack.",
       ".": "Leather Armor"
     },
     "fh-124": {
@@ -626,7 +668,7 @@
       ".": "Mantle of Summoning"
     },
     "fh-141": {
-      "1": "When you are attacked, before drawing an attack modifier car, the attacker gains disadvantage on the attack and you gain %game.action.shield:1% for the attack.",
+      "1": "When you are attacked, before drawing an attack modifier card, the attacker gains disadvantage on the attack and you gain %game.action.shield:1% for the attack.",
       ".": "Studded Leather"
     },
     "fh-142": {
@@ -796,7 +838,7 @@
       ".": "Wing Clippers"
     },
     "fh-183": {
-      "1": "During your turn, all figures gain disadvantage on and add 1 %game.action.range% to all ranged attacks this round. ",
+      "1": "During your turn, all figures gain disadvantage on and add -1 %game.action.range% to all ranged attacks this round. ",
       ".": "Decanter of Mists"
     },
     "fh-184": {
@@ -881,7 +923,7 @@
       ".": "Scepter of Control"
     },
     "fh-204": {
-      "1": "During your turn, one adjacent normal or elite enemy suffers %game.damage% to their %game.action.shield% value.",
+      "1": "During your turn, one adjacent normal or elite enemy suffers %game.damage% equal to their %game.action.shield% value.",
       ".": "Severed Claw"
     },
     "fh-205": {
@@ -970,7 +1012,7 @@
     },
     "fh-225": {
       "1": "During your melee attack ability, %game.element.consume.earth% to add +1 %game.action.attack% to one attack and flip this card over.",
-      "2": "During your melee attack ability, %game.element.consume.air% to add %game.action.push% 2 to one attack and flip this card over.",
+      "2": "During your ranged attack ability, %game.element.consume.air% to add %game.action.push% 2 to one attack and flip this card over.",
       ".": "Algox Carving"
     },
     "fh-226": {
@@ -1002,7 +1044,7 @@
       ".": "Orchid Wand"
     },
     "fh-233": {
-      "1": "During you ally's ranged attack ability, add %game.condition.muddle% %game.condition.curse% one attack.",
+      "1": "During an ally's ranged attack ability, add %game.condition.muddle% and %game.condition.curse% one attack.",
       ".": "Dead Raven"
     },
     "fh-234": {
@@ -1066,8 +1108,446 @@
       "12": "You find the remains of Camilla and her paintings of a majestic horned creature.",
       "51": "Read %data.section:78.1%",
       "54": "Treasure chest? There was no treasure chest there Maybe you should slow down on the drink",
-      "57": "What’s this? An empty chest with a lead trapdoor at the bottom You make note of the location so you can return with Gem’s help later.",
+      "57": "What's this? An empty chest with a lead trapdoor at the bottom You make note of the location so you can return with Gem's help later.",
       "62": "gain Mechanical Cube blueprint %game.itemFh.82% when you find the other half of this blueprint."
+    }
+  },
+  "challenges": {
+    "fh": {
+      "1482": {
+        ".": "Armor Testing",
+        "text": "Whenever any character suffers%game.damage% from an attack that is not reduced by%game.action.shield%,%game.action.push%2 is added to the attack."
+      },
+      "1483": {
+        ".": "Empathy",
+        "text": "Whenever any enemy suffers%game.damage%, all other enemies gain advantage on all their attacks for the round."
+      },
+      "1484": {
+        ".": "Optimism",
+        "text": "Whenever you reveal a negative or %game.attackmodifier.null% attack modifier card from the monster attack modifier deck, treat it as a %game.attackmodifier.plus0% instead."
+      },
+      "1485": {
+        ".": "Foul Luck",
+        "text": "Whenever you reveal a %game.attackmodifier.minus2% attack modifier card from the monster attack modifier deck, treat it as a %game.attackmodifier.double% instead."
+      },
+      "1486": {
+        ".": "Divine Intervention",
+        "text": "Add three %game.attackmodifier.bless% attack modifier cards to the monster attack modifier deck at the start of the scenario."
+      },
+      "1487": {
+        ".": "Hypochondria",
+        "text": "Whenever any character gains a negative condition, they also gain%game.condition.wound%."
+      },
+      "1488": {
+        ".": "Upwind",
+        "text": "All enemy ranged attacks have +1%game.action.range%.<br>Add +1%game.action.move% to all enemy move abilities."
+      },
+      "1489": {
+        ".": "Sleep Trashing",
+        "text": "Whenever any character short or long rests, all adjacent allies suffer hazardous terrain damage."
+      },
+      "1490": {
+        ".": "Greed is Good",
+        "text": "Enemies perform%game.action.loot%1 at the end of each of their turns. Whenever an enemy loots a loot token, it gains%game.condition.strengthen%. If this scenario has no loot deck, draw a new challenge and place this card on the bottom of the deck."
+      },
+      "1491": {
+        ".": "Alternate Tactics",
+        "text": "During ordering of initiative each round, initiative is ordered from highest to lowest."
+      },
+      "1492": {
+        ".": "Barbed",
+        "text": "All undamaged enemies have%game.action.retaliate%2."
+      },
+      "1493": {
+        ".": "Hardy Stock",
+        "text": "All enemies add L/2 (rounded up) to their maximum hit point value."
+      },
+      "1494": {
+        ".": "Keep Watch",
+        "text": "Whenever you perform an attack targeting an enemy that has not yet acted this round, gain disadvantage on the attack. Whenever you perform an attack targeting an enemy that has already acted this round, gain advantage on the attack."
+      },
+      "1495": {
+        ".": "Toxic Termination",
+        "text": "The first time any enemies dies each round, each character adjacent to it gains%game.condition.poison%."
+      },
+      "1496": {
+        ".": "Feast or Famine",
+        "text": "Remove all %game.attackmodifier.plus0% attack modifier cards from the monster attack modifier deck at the start of the scenario.<br>All enemies are immune to%game.condition.curse%."
+      },
+      "1497": {
+        ".": "Combustible",
+        "text": "Whenever any enemy dies, one character closest to it suffers%game.damage:1% (or%game.damage:2% for scenario levels 4-7)."
+      },
+      "1498": {
+        ".": "Beguiling Force",
+        "text": "All enemy ranged attacks have%game.action.push%1."
+      },
+      "1499": {
+        ".": "Glittering Distraction",
+        "text": "Whenever there are three or more revealed loot tokens on the map at the end of any round, all characters gain%game.condition.impair%. If this scenario has no loot deck, draw a new challenge and place this card on the bottom of the deck."
+      },
+      "1500": {
+        ".": "Increasing Aggression",
+        "text": "Whenever a %game.attackmodifier.minus1% or %game.attackmodifier.minus2% attack modifier card is drawn from the monster attack modifier deck, after the attack, remove the card from the deck for the remainder of the scenario."
+      },
+      "1501": {
+        ".": "Heightened Reflexes",
+        "text": "Decrease all enemy initiative values by 10."
+      },
+      "1502": {
+        ".": "Frozen Numb",
+        "text": "Characters cannot use%game.itemSlot:small%."
+      },
+      "1503": {
+        ".": "Imitation",
+        "hint": "For implementation reasons, the character is chosen randomly!",
+        "text": "Add five random attack modifier cards to the monster attack modifier deck from among the perk attack modifier cards of any unlocked Frosthaven characters (player's choice) not participating in the scenario."
+      },
+      "1504": {
+        ".": "Fool's Gold",
+        "text": "Whenever any character loots one or more loot tokens, they gain%game.condition.curse%. If this scenario has no loot deck, draw a new challenge and place this card on the bottom of the deck."
+      },
+      "1505": {
+        ".": "Hungover",
+        "text": "Increase all character initiative values by 10."
+      },
+      "1506": {
+        ".": "Tight Formation",
+        "text": "Whenever any character performs an attack while not adjacent to an ally, add -1%game.action.attack% to the attack."
+      },
+      "1507": {
+        ".": "Shoddy Craftsmanship",
+        "text": "Whenever an item would be spent, it is lost instead."
+      },
+      "1508": {
+        ".": "Staggered Formation",
+        "text": "At the end of each character's turn, all adjacent characters suffer%game.damage:1%."
+      },
+      "1509": {
+        ".": "Budget Rations",
+        "text": "Whenever any character rests, they gain%game.condition.curse%."
+      },
+      "1510": {
+        ".": "United Advance",
+        "text": "Whenever any character ends their turn more than two hexes away from any other character (three hexes away for three characters, or four hexes for four characters), the character ending their turn gains%game.condition.muddle%."
+      },
+      "1511": {
+        ".": "Dense Fog",
+        "text": "All characters' move abilities of value 4 or greater are reduced by 1."
+      },
+      "1512": {
+        ".": "Spiked Armor",
+        "text": "All characters gain%game.action.retaliate%X,%game.action.range%3, where X is their%game.action.shield% value. Add -1%game.action.attack% to all character attacks."
+      },
+      "1513": {
+        ".": "Fight Fair",
+        "text": "Whenever any character kills an enemy, that character gains all negative conditions the enemy had when it died."
+      },
+      "1514": {
+        ".": "Phalanx",
+        "text": "Each enemy gains%game.action.shield% 1 while it is adjacent to one or more of its allies."
+      },
+      "1515": {
+        ".": "Dominating Presence",
+        "text": "While any elite enemy is present on the map, all normal enemies of the same type gain%game.action.shield%1."
+      },
+      "1516": {
+        ".": "Arcane Tactics",
+        "text": "Whenever one or more elements move from waning to inert at the end of a round, one character suffers hazardous terrain damage."
+      },
+      "1517": {
+        ".": "Warm Up",
+        "text": "While any character's hit point value is equal to or greater than half their maximum hit poiunt value (rounded down), that character gains disadvantage on all their attacks."
+      },
+      "1518": {
+        ".": "Bloodlink",
+        "text": "The first time any enemy suffers%game.damage% each round, one other damaged enemy performs%game.action.heal%X, self, where X is the damage suffered."
+      },
+      "1519": {
+        ".": "Caltrops",
+        "text": "Characters and their allies treat all hexes with loot tokens as hazardous terrain. This does not affect enemies."
+      },
+      "1520": {
+        ".": "Shared Pain",
+        "text": "Each time any enemy causes a character to suffer%game.damage%, another character suffers%game.damage:1%."
+      },
+      "1521": {
+        ".": "Swarming Tactics",
+        "text": "All enemies add%game.action.jump% to all their move abilities."
+      },
+      "1522": {
+        ".": "Offensive Spread",
+        "hint": "Only applied for monsters!",
+        "text": "All figures add -1%game.action.attack% and +1%game.action.target% to all of their single-target attack abilities."
+      },
+      "1523": {
+        ".": "Pack Hunting",
+        "text": "At the start of the third round, spawn one normal Hound in any starting hex for each character in the party. If the scenario has Hounds in the first room or six types of monsters not counting the Hounds, draw a new challenge and place this card on the bottom of the deck."
+      },
+      "1524": {
+        ".": "Healthy Vigor",
+        "text": "Each enemy gains%game.action.shield%1 while it has no negative condition. Whenever any enemy loses on or more negative conditions at the end of its turn, it suffers%game.damage:1%."
+      },
+      "1525": {
+        ".": "Spiteful Retribution",
+        "text": "Whenever any negative condition is removed from any enemy, it gains%game.condition.strengthen%."
+      },
+      "1526": {
+        ".": "Hunker Down",
+        "text": "During ordering of initiative each round, if there are fewer monsters than characters on the map, all monsters gain%game.condition.ward.%."
+      }
+    }
+  },
+  "trials": {
+    "fh": {
+      "348": {
+        ".": "Weakness",
+        "text": "At the start of each scenario, revert your attack modifier deck to its starting state without perks, then remove all positive modifiers (including %game.attackmodifier.double%).<br>You have passed this trial when you complete a scenario.<br>(Revert your deck back to its proper state when passed.)"
+      },
+      "349": {
+        ".": "Strategy",
+        "text": "At the start of each scenario, do not discard any battle goals. (If you draw two mutually exclusive battle goals, discard one and draw a replacement.)<br>You have passed this trial when you complete a scenario and achieve all battle goals you were dealt."
+      },
+      "350": {
+        ".": "Manipulation",
+        "text": "Convince the party to make event card choices according to the following agenda:<br>%game.eventCheckbox:A% %game.eventCheckbox:B% %game.eventCheckbox:B% %game.eventCheckbox:A%<br>Whe the party makes a choice that matches the leftmost unchecked box, check the box.<br>You have passed this trial when all boxes are checked."
+      },
+      "351": {
+        ".": "Poverty",
+        "text": "During each scenario, whenever an ally loots a loot token, suffer %game.damage:L/3% (rounded up).<br>You have passed this trial when you complete a scenario."
+      },
+      "352": {
+        ".": "Ceonsorship",
+        "text": "During each scenario you may not say the words: \"Attack\", \"Take\", or \"Damage\". Whenever you do, suffer %game.damage:L/2% (rounded up).<br>You have passed this trial when you complete a scenario."
+      },
+      "353": {
+        ".": "Order",
+        "text": "During each scenario, all of your attack abilities must target the lowest-numbered standee on the map.<br>You have passed this trial when you complete a scenario."
+      },
+      "354": {
+        ".": "Prediction",
+        "text": "At the start of each scenario, predict the number of rounds needed to complete the scenario by placing that number of damage tokens in front of you.<br>You have passed this trial when you complete a scenario in the prediceted number of rounds or one fewer than the predicted number of rounds."
+      },
+      "355": {
+        ".": "Inquisition",
+        "text": "During any scenario, publicly guess another character's battle goal (the name or effect) prior to its reveal. You may not guess more than once per character per scenario.<br>You have passed this trial when you correctly guess a battle goal."
+      },
+      "356": {
+        ".": "Trials",
+        "text": "During each scenario, draw one additional battle goal at the end of each round in which you suffered damage. Treat the conditions for each newly-drawn battle goal as though the scenario is just starting. Gain checkmarks for only one completed battle goal each scenario.<br>You have passed this trail when you complete a scenario and achieve at least half your battle goals."
+      },
+      "357": {
+        ".": "Deceit",
+        "text": "Complete a scenario during which your character becomes exhausted.<br>You have passed this trial when, before starting the next scenario, you convince another player that your trial is impossible and you should be permitted to reveal it."
+      },
+      "358": {
+        ".": "Expression",
+        "text": "At the start of each scenario select one noun. If your selected noun is not spoken aloud by another player during each round, suffer %game.damage:L/2% (rounded up) at the end of the round. The selected noun may not be \"Card\", \"Attack\", \"Damage\", \"Door\", \"Monster\", \"Hex\", or \"Initiative\".<br>You have passed this Trial when you complete a scenario."
+      },
+      "359": {
+        ".": "Patience",
+        "text": "You have passed this trial when the trials deck is empty and you are the last character holding an unfinished trial."
+      },
+      "360": {
+        ".": "Victory",
+        "text": "At the start of each scenario, instead of characters drawing battle goals normally. you draw C+1 two-check battle goals and assign one to each character.<br>You have passed this trial when you complete a scenario and all characters complete their battle goals."
+      }
+    }
+  },
+  "favors": {
+    "fh": {
+      "capacity": {
+        ".": "Capacity",
+        "automation": "Capicity of small items automatically increased for each favor. Unused item must be applied manually.",
+        "text": "Each character may bring one extra small item into this scenario, but they must have one unused small item at all times during this scenario."
+      },
+      "discovery": {
+        ".": "Discovery",
+        "automation": "Must be applied manual in the Loot Deck Menu!",
+        "text": "The party chooses a material or herb resource not included in the loot deck for this scenario. Add one random loot card of that type to the loot deck for this scenario."
+      },
+      "knowledge": {
+        ".": "Knowledge",
+        "automation": "Fully automated (applied in scenario summary)",
+        "reward": "Knowledge Favor",
+        "text": "Each character will gain 3 experience if they achieve their battle goal."
+      },
+      "potential": {
+        ".": "Potential",
+        "automation": "No automation. Must be applied phyisically.",
+        "text": "Each character may add one ability card, from among those they have passed over when leveling up, to their pool for this scenario. If they do, they must remove a different card of equal or higher level from their pool for this scenario."
+      },
+      "strategy": {
+        ".": "Strategy",
+        "automation": "Must be applied manual in the Monster Ability Deck Menu!",
+        "text": "The party chooses a monster ability deck and draws two cards at random, removing one from this scenario and shuffling the other back into the deck. This can only be done once per deck."
+      },
+      "wealth": {
+        ".": "Wealth",
+        "automation": "Fully automated (applied in scenario summary)",
+        "level": "(incl. +{0} Wealth bonus)",
+        "reward": "Wealth Favor",
+        "text": "Each character will gain +1 gold per coin on their loot cards."
+      }
+    }
+  },
+  "pets": {
+    "fh-01": {
+      ".": "Piranha Pig",
+      "1": "All characters immediately perform:"
+    },
+    "fh-02": {
+      ".": "Hound",
+      "1": "All characters add +1%game.action.attack% to all their melee attacks targeting enemies adjacent to any of the character's allies this round."
+    },
+    "fh-03": {
+      ".": "Spitting Drake",
+      "1": "All characters add %game.condition.poison% to all their ranged attacks this round."
+    },
+    "fh-04": {
+      ".": "Rending Drake",
+      "1": "All characters add %game.condition.wound% to all their melee attacks this round."
+    },
+    "fh-05": {
+      ".": "Black Imp",
+      "1": "In initiative order, all characters immediately perform:"
+    },
+    "fh-06": {
+      ".": "Forest Imp",
+      "1": "In initiative order, all characters immediately perform:"
+    },
+    "fh-07": {
+      ".": "Snow Imp",
+      "1": "In initiative order, all characters immediately perform:"
+    },
+    "fh-08": {
+      ".": "Ooze",
+      "1": "Create one 1-,2-, or 3-hex obstacle anywhere on the revealed map."
+    },
+    "fh-09": {
+      ".": "Ruined Machine",
+      "1": "All characters immediately perform:"
+    },
+    "fh-10": {
+      ".": "Lightning Eel",
+      "1": "All characters suffers %game.damage:2% to %game.card.recover% one of their level 1 or X discarded cards."
+    },
+    "fh-11": {
+      ".": "HE-RO-IC-S",
+      "1": "In initiative order, all characters can individually choose to immediately perform:"
+    },
+    "fh-12": {
+      ".": "Brummix",
+      "1": "During card selection, reveal the top card of each active monster set's ability deck for the round before each character selects their cards."
+    }
+  },
+  "custom": {
+    "fh": {
+      "astral": {
+        "1": "Move one waning element to strong",
+        "2": "+1 %game.action.attack% for each pair of active %game.action.custom.fh-infusion%",
+        "3": "Whenever you become exhausted, keep all your active bonuses in play, with your summons acting on initiative 99 each round",
+        "4": "Whenever you short rest, you may %game.element.consume.wild% to %game.card.recover% on spent %game.items.slots.onehand% or %game.items.slots.twohand% item",
+        "5": "Once each scenario, during ordering of initiative, after all ability cards have been revealed, %game.element.wild%",
+        "6": "Have five active %game.action.custom.fh-infusion% bonuses",
+        "7": "Kill at least four enemies, but never attack"
+      },
+      "coral": {
+        "1": "If you performed a %data.action.custom.fh-tides% action this round, %game.attackmodifier.plus2% instead",
+        "2": "and whenever you would gain %game.condition.impair%, prevent the condition",
+        "3": "Whenever you declare a long rest during card selection, gain %game.action.shield:1% for the round",
+        "4": "Gain advantage on all your attacks performed while occupying or targeting enemies occupying water hexes",
+        "5": "Never suffer damage from attacks, and be targeted by at least five attacks",
+        "6": "At the start of each of your rests, have more active %game.action.custom.fh-tides% than cards in your discard pile"
+      },
+      "drill": {
+        "1": "%game.action.custom.fh-pressure-up% or %game.action.custom.fh-pressure-down%",
+        "2": "The target and all enemies adjacent to it suffer %game.damage:1%",
+        "3": "Whenever you long rest, you may %game.action.custom.fh-pressure-up% or %game.action.custom.fh-pressure-down%",
+        "4": "Whenever you would gain %game.condition.poison%, you may suffer %game.damage:1% to prevent the condition",
+        "5": "Once each scenario, when you would become exhausted, instead gain %game.condition.stun% and %game.condition.invisible%, lose all your cards, %game.card.recover% four lost cards, and then discard the recovered cards",
+        "6": "Never attack",
+        "7": "For four consecutive rounds, move the pressure gauge up or down three levels from where is started the round (%game.action.custom.fh-pressure-low% to %game.action.custom.fh-pressure-over%, or vice versa)"
+      },
+      "fist": {
+        "1": "Create one 1-hex icy terrain tile in a featureless hex adjacent to the target",
+        "2": "and whenever you enter icy terrain with a move ability, you may ignore the effect to add +1 %game.action.move%",
+        "3": "Whenever you heal from a long rest, you may %game.elementHalf.consume:ice|earth% to add +2 %game.action.heal%",
+        "4": "Once each scenario, when you would suffer %game.damage%, you may negate the %game.damage%",
+        "5": "%game.card.recover% at least one card from your discard pile each round",
+        "6": "Enter at least ten different hexes with one move ability, then cause one enemy to suffer at least %game.damage:10% with one attack ability in the same turn"
+      },
+      "kelp": {
+        "1": "Gain 1 %game.characterToken.kelp.trophy%",
+        "2": "Gain 1 %game.action.custom.fh-trophy%",
+        "3": "Whenever you long rest, you may %game.action.loot% one adjacent hex. If you gain any loot tokens, gain 1 %game.action.custom.fh-trophy%",
+        "4": "At the start of each scenario gain 2 %game.action.custom.fh-trophy%",
+        "5": "While you have %game.condition.invisible%, gain advantage on all your attacks",
+        "6": "Perform all your attacks with advantage",
+        "7": "Infuse %game.element.dark% each round"
+      },
+      "meteor": {
+        "1": "Create one 1-hex hazardous terrain tile in a featureless hex adjacent to the target",
+        "2": "Whenever you long rest, you may destroy one adjacent obstacle to gain %game.condition.ward%",
+        "3": "Whenever you short rest, you may %game.element.consume.fire% to perform %game.condition.wound%, %game.action.target:1% enemy occupying or adjacent to hazardous terrain",
+        "4": "You and all allies are unaffected by hazardous terrain you create",
+        "5": "Create or destroy at least one obstacle or hazardous terrain tile each round",
+        "6": "Move enemies through six different hexes of hazardous terrain you created in one turn"
+      },
+      "prism": {
+        "1": "At the end of turn perform:",
+        "2": "Focus on the enemy farthest from HIVE.",
+        "3": "All adjacent allies gain %game.action.shield% 1.",
+        "4": "When attacked reduece %game.damage% by 1 for each negative condition the attacker has.",
+        "5": "Give %game.condition.wound% to all adjacent figures and self at the end of turn.",
+        "6": "After this attack ability, grant one of your summons %game.action.move:2% card",
+        "7": "After this attack ability, %game.action.custom.fh-mode%",
+        "8": "Whenever you long rest, you may do so on any initiative value, choosing your initiative after all ability cards have been revealed, and you decide how your summons perform their abilities for the round",
+        "9": "At the end of each of your short rests, you may %game.action.custom.fh-mode%",
+        "10": "Whenever you would gain %game.condition.wound%, prevent the condition",
+        "11": "%game.action.custom.fh-mode% each round",
+        "12": "%game.action.custom.fh-mode% into four different summons in one round"
+      },
+      "shackles": {
+        "1": "When attacking, ignore %game.action.retaliate%",
+        "2": "all enemeis within 2 hexes",
+        "3": "Add +1 %game.action.attack% for each negative condition you have",
+        "4": "Each round in which you long rest, you may ignore all negative conditions you have.<br>If you do, they cannot be removed that round",
+        "5": "Whenever you become exhausted, first perform %game.condition.curse%, %game.action.target% all, %game.action.range:3%",
+        "6": "Increase your maximum hit point value by 5",
+        "7": "Cause other figures to suffer a total of at least %game.damage:40% in one round",
+        "8": "Start a turn with %game.condition.wound%,%game.condition.brittle%,%game.condition.bane%,%game.condition.poison%,%game.condition.immobilize%,%game.condition.disarm%,%game.condition.stun% and %game.condition.muddle%"
+      },
+      "shards": {
+        "1": "Reveal the top card of the target's monster ability deck",
+        "2": "Gain 1 %game.characterToken.shards.resonance%",
+        "3": "Gain 1 %game.action.custom.fh-resonance%",
+        "4": "Whenever you short rest, you may %game.element.consume.air% to perform %game.condition.strengthen%, %game.action.range:3% and %game.element.consume.light% to perform %game.condition.bless%, %game.action.range:3%",
+        "5": "At the start of each scenario you may gain %game.condition.brittle% to gain 2 %game.action.custom.fh-resonance%",
+        "6": "Whenever a new room is revealed, you may reveal the top card of both the monster attack modifier deck and all allies' attack modifier decks",
+        "7": "Always have 0 %game.action.custom.fh-resonance% directly before you gain %game.action.custom.fh-resonance% at the end of each of your turns",
+        "8": "Spend 5 %game.action.custom.fh-resonance% on each of five different Wave abilities"
+      },
+      "snowflake": {
+        "1": "If this action forces the target to move, it suffers %game.damage:1%",
+        "2": "Whenever you long rest, you may %game.elementHalf:ice|air%",
+        "3": "Whenever you short rest, you may %game.element.consume.ice% to perform %game.condition.regenerate%, %game.action.range:3% and %game.element.consume.air% to perform %game.condition.ward%, %game.action.range:3%",
+        "4": "At the start of each scenario, all enemies gain %game.condition.muddle%. Whenever a new room is revealed, all enemies in the newly revealed room gain %game.condition.muddle%",
+        "5": "Cause at least one ally or enemy to move each round",
+        "6": "Ensure the first ally to suffer %game.damage% each round, directly before suffering the %game.damage%, has at least one condition you applied"
+      },
+      "trap": {
+        "1": "Create one %game.damage:2% trap in an adjacent empty hex at end of turn.",
+        "2": "Create one %game.action.heal% 2 trap in an empty hex adjacent to the target",
+        "3": "Create one %game.damage:1% trap in an empty hex adjacent to the target",
+        "4": "Add %game.damage:2% or %game.action.heal% 2 to a trap within %game.action.range:2% of you",
+        "5": "Add %game.action.push% 2 or %game.action.pull% 2",
+        "6": "Whenever you long rest, you may create one %game.damage:1% trap in an adjacent empty hex",
+        "7": "Whenever you enter a hex with a trap, you may choose to not spring the trap",
+        "8": "At the start of each scenario, you may create one %game.damage:2% trap in an adjacent empty hex",
+        "9": "Have one %game.action.heal% trap on the map with a value of at least 20",
+        "10": "Move enemies through seven or more traps with one ability"
+      }
     }
   }
 }

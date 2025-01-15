@@ -1,15 +1,18 @@
+import { Dialog } from "@angular/cdk/dialog";
 import { Component, EventEmitter, OnDestroy, OnInit, Output } from "@angular/core";
+import { Subscription } from "rxjs";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
-import { settingsManager, SettingsManager } from "src/app/game/businesslogic/SettingsManager";
-import { ScenarioData } from "src/app/game/model/data/ScenarioData";
+import { SettingsManager, settingsManager } from "src/app/game/businesslogic/SettingsManager";
 import { GameState } from "src/app/game/model/Game";
 import { GameScenarioModel, Scenario, ScenarioCache } from "src/app/game/model/Scenario";
+import { ScenarioData } from "src/app/game/model/data/ScenarioData";
 import { Spoilable, SpoilableMock } from "src/app/game/model/data/Spoilable";
-import { ScenarioRequirementsComponent } from "src/app/ui/figures/party/requirements/requirements";
-import { Dialog } from "@angular/cdk/dialog";
-import { Subscription } from "rxjs";
+import { ScenarioRequirementsDialogComponent } from "src/app/ui/figures/party/requirements/requirements";
+import { ghsShuffleArray } from "src/app/ui/helper/Static";
+import { ScenarioChartDialogComponent } from "../../../figures/party/scenario-chart/scenario-chart";
 
 @Component({
+  standalone: false,
   selector: 'ghs-scenario-menu',
   templateUrl: 'scenario.html',
   styleUrls: ['../menu.scss', 'scenario.scss']
@@ -22,6 +25,9 @@ export class ScenarioMenuComponent implements OnInit, OnDestroy {
   settingsManager: SettingsManager = settingsManager;
   GameState = GameState;
   edition: string = "";
+  editions: string[] = [];
+  groups: (string | undefined)[] = [];
+  hasRandom: boolean = false;
 
   constructor(private dialog: Dialog) { }
 
@@ -36,9 +42,13 @@ export class ScenarioMenuComponent implements OnInit, OnDestroy {
       // set edition or first
       gameManager.currentEdition();
 
+    this.updateGroups();
+    this.setEditions();
+
     this.uiChangeSubscription = gameManager.uiChange.subscribe({
       next: () => {
         this.scenarioCache = [];
+        this.setEditions();
       }
     })
   }
@@ -51,26 +61,28 @@ export class ScenarioMenuComponent implements OnInit, OnDestroy {
     }
   }
 
-  editions(): string[] {
+  setEditions() {
     if (gameManager.game.edition) {
-      return [gameManager.game.edition, ...gameManager.editionExtensions(gameManager.game.edition)];
+      this.editions = [gameManager.game.edition, ...gameManager.editionExtensions(gameManager.game.edition), ...gameManager.editionScenarioExtensions(gameManager.game.edition)];
+    } else {
+      this.editions = gameManager.editionData.filter((editionData) => editionData.scenarios && editionData.scenarios.filter((scenarioData) => scenarioData.edition == editionData.edition && settingsManager.settings.editions.indexOf(scenarioData.edition) != -1).length > 0).map((editionData) => editionData.edition);
     }
-
-    return gameManager.editionData.filter((editionData) => editionData.scenarios && editionData.scenarios.filter((scenarioData) => scenarioData.edition == editionData.edition && settingsManager.settings.editions.indexOf(scenarioData.edition) != -1).length > 0).map((editionData) => editionData.edition);
+    this.hasRandom = this.edition && gameManager.sectionData(this.edition).find((sectionData) => sectionData.group == 'randomMonsterCard') != undefined || false;
   }
 
   setEdition(edition: string) {
     this.edition = edition;
+    this.updateGroups();
+    this.setEditions();
   }
 
-  groups(): (string | undefined)[] {
+  updateGroups() {
     if (!this.edition) {
-      return [];
+      this.groups = [];
     }
 
-    let groups = gameManager.scenarioManager.scenarioData(this.edition).map((scenarioData) => scenarioData.group).filter((value, index, self) => value && self.indexOf(value) === index).sort((a, b) => a && b && (a.toLowerCase() < b.toLowerCase() ? -1 : 1) || 0);
-    groups = [undefined, ...groups];
-    return groups;
+    const groups = gameManager.scenarioManager.scenarioData(this.edition, true).map((scenarioData) => scenarioData.group).filter((value, index, self) => value && self.indexOf(value) === index).sort((a, b) => a && b && (a.toLowerCase() < b.toLowerCase() ? -1 : 1) || 0);
+    this.groups = [undefined, ...groups];
   }
 
   scenarios(group: string | undefined = undefined, filterSuccess: boolean = false, includeSpoiler: boolean = false, all: boolean = false): ScenarioCache[] {
@@ -86,30 +98,22 @@ export class ScenarioMenuComponent implements OnInit, OnDestroy {
 
     model = { edition: this.edition, group: group, filterSuccess: filterSuccess, includeSpoiler: includeSpoiler, all: all, scenarios: [] };
 
-    model.scenarios = gameManager.scenarioManager.scenarioData(this.edition, all).filter((scenarioData) => scenarioData.group == group && (includeSpoiler || (!scenarioData.spoiler || gameManager.game.unlockedCharacters.indexOf(scenarioData.name) != -1 || scenarioData.solo && gameManager.game.unlockedCharacters.indexOf(scenarioData.solo) != -1)) && (!filterSuccess || !this.scenarioSuccess(scenarioData) && !gameManager.scenarioManager.isBlocked(scenarioData))).sort(gameManager.scenarioManager.sortScenarios).map((scenarioData) => new ScenarioCache(scenarioData, this.scenarioSuccess(scenarioData), gameManager.scenarioManager.isBlocked(scenarioData), gameManager.scenarioManager.isLocked(scenarioData)));
+    model.scenarios = gameManager.scenarioManager.scenarioData(this.edition, all).filter((scenarioData) => scenarioData.group == group && (includeSpoiler || (!scenarioData.spoiler || gameManager.game.unlockedCharacters.indexOf(scenarioData.name) != -1 || scenarioData.solo && gameManager.game.unlockedCharacters.indexOf(scenarioData.solo) != -1)) && (!filterSuccess || !gameManager.scenarioManager.isSuccess(scenarioData) && !gameManager.scenarioManager.isBlocked(scenarioData))).sort(gameManager.scenarioManager.sortScenarios).map((scenarioData) => new ScenarioCache(scenarioData, gameManager.scenarioManager.isSuccess(scenarioData), gameManager.scenarioManager.isBlocked(scenarioData), gameManager.scenarioManager.isLocked(scenarioData)));
 
     this.scenarioCache.push(model);
 
     return model.scenarios;
   }
 
-  scenarioSuccess(scenario: ScenarioData): boolean {
-    return gameManager.game.party.scenarios && gameManager.game.party.scenarios.find((identifier) => scenario.index == identifier.index && scenario.edition == identifier.edition && scenario.group == identifier.group) != undefined;
-  }
-
   maxScenario(group: string | undefined) {
     return Math.max(...this.scenarios(group).map((scenarioData) => scenarioData.index.length));
   }
 
-  hasScenario(scenarioData: ScenarioData): boolean {
-    return gameManager.game.scenario != undefined && gameManager.game.scenario.edition == scenarioData.edition && gameManager.game.scenario.index == scenarioData.index && gameManager.game.scenario.group == scenarioData.group && gameManager.game.scenario.solo == scenarioData.solo;
-  }
-
   setScenario(scenarioData: ScenarioData) {
-    if (!this.hasScenario(scenarioData)) {
+    if (!gameManager.scenarioManager.isCurrent(scenarioData)) {
       if (gameManager.scenarioManager.isLocked(scenarioData)) {
-        this.dialog.open(ScenarioRequirementsComponent, {
-          panelClass: 'dialog',
+        this.dialog.open(ScenarioRequirementsDialogComponent, {
+          panelClass: ['dialog'],
           data: { scenarioData: scenarioData }
         })
       } else {
@@ -152,43 +156,58 @@ export class ScenarioMenuComponent implements OnInit, OnDestroy {
     }
   }
 
+  randomScenario() {
+    const shuffledSections = ghsShuffleArray(gameManager.sectionData(this.edition).filter((sectionData) => sectionData.group == 'randomMonsterCard'));
+
+    if (shuffledSections.length < 3) {
+      return;
+    }
+
+    gameManager.stateManager.before("setRandomScenario");
+    const scenario = gameManager.scenarioManager.createScenario();
+    scenario.name = "%scenario.random%";
+    scenario.additionalSections = shuffledSections.slice(0, 3).map((sectionData) => sectionData.index);
+    gameManager.scenarioManager.setScenario(undefined);
+    gameManager.scenarioManager.setScenario(scenario);
+    gameManager.scenarioManager.addSection(shuffledSections[0]);
+    gameManager.stateManager.after();
+  }
+
   manualScenario(input: HTMLInputElement, group: string | undefined) {
-    const editionData = gameManager.editionData.find((editionData) => editionData.edition == this.edition);
     input.classList.add('error');
-    if (editionData) {
-      let numbers: string[] = input.value.split(',');
-      numbers.forEach((number) => number.trim());
-      input.value.split(',').forEach((number) => {
-        const scenarioData = editionData.scenarios.find((scenarioData) => scenarioData.index == number.trim() && scenarioData.group == group);
-        if (scenarioData) {
+    const scenarios: ScenarioData[] = gameManager.scenarioData(this.edition).filter((scenarioData) => scenarioData.group == group);
+    let numbers: string[] = input.value.split(',');
+    numbers.forEach((number) => number.trim());
+    input.value.split(',').forEach((number) => {
+      const scenarioData = scenarios.find((scenarioData) => scenarioData.index == number.trim() && scenarioData.group == group);
+      if (scenarioData) {
+        if (!this.scenarios(group).find((scenarioCache) => scenarioCache.edition == scenarioData.edition && scenarioCache.group == scenarioData.group && scenarioCache.index == scenarioData.index)) {
+          gameManager.stateManager.before("addManualScenario", ...gameManager.scenarioManager.scenarioUndoArgs(new Scenario(scenarioData)));
+          gameManager.game.party.manualScenarios.push(new GameScenarioModel(scenarioData.index, scenarioData.edition, scenarioData.group));
+          gameManager.stateManager.after();
+        }
+        numbers = numbers.filter((value) => value.trim() != number);
+      } else if (scenarios.find((scenarioData) => scenarioData.index.substring(0, scenarioData.index.length - 1) == number.trim() && scenarioData.index.substring(scenarioData.index.length - 1).match(/[A-B]/) && scenarioData.group == group)) {
+        scenarios.filter((scenarioData) => scenarioData.index.substring(0, scenarioData.index.length - 1) == number.trim() && scenarioData.index.substring(scenarioData.index.length - 1).match(/[A-B]/) && scenarioData.group == group).forEach((scenarioData) => {
           if (!this.scenarios(group).find((scenarioCache) => scenarioCache.edition == scenarioData.edition && scenarioCache.group == scenarioData.group && scenarioCache.index == scenarioData.index)) {
             gameManager.stateManager.before("addManualScenario", ...gameManager.scenarioManager.scenarioUndoArgs(new Scenario(scenarioData)));
             gameManager.game.party.manualScenarios.push(new GameScenarioModel(scenarioData.index, scenarioData.edition, scenarioData.group));
             gameManager.stateManager.after();
           }
-          numbers = numbers.filter((value) => value.trim() != number);
-        } else if (editionData.scenarios.find((scenarioData) => scenarioData.index.substring(0, scenarioData.index.length - 1) == number.trim() && scenarioData.index.substring(scenarioData.index.length - 1).match(/[A-B]/) && scenarioData.group == group)) {
-          editionData.scenarios.filter((scenarioData) => scenarioData.index.substring(0, scenarioData.index.length - 1) == number.trim() && scenarioData.index.substring(scenarioData.index.length - 1).match(/[A-B]/) && scenarioData.group == group).forEach((scenarioData) => {
-            if (!this.scenarios(group).find((scenarioCache) => scenarioCache.edition == scenarioData.edition && scenarioCache.group == scenarioData.group && scenarioCache.index == scenarioData.index)) {
-              gameManager.stateManager.before("addManualScenario", ...gameManager.scenarioManager.scenarioUndoArgs(new Scenario(scenarioData)));
-              gameManager.game.party.manualScenarios.push(new GameScenarioModel(scenarioData.index, scenarioData.edition, scenarioData.group));
-              gameManager.stateManager.after();
-            }
-          })
-          numbers = numbers.filter((value) => value.trim() != number);
+        })
+        numbers = numbers.filter((value) => value.trim() != number);
 
-        }
-      })
-
-      if (numbers.length == 0) {
-        input.classList.remove('error');
-        input.value = "";
-      } else {
-        input.value = numbers.join(',');
       }
+    })
 
-      this.scenarioCache = [];
+    if (numbers.length == 0) {
+      input.classList.remove('error');
+      input.value = "";
+    } else {
+      input.value = numbers.join(',');
     }
+
+    this.scenarioCache = [];
   }
 
   hasSpoilers(group: string | undefined): boolean {
@@ -204,5 +223,17 @@ export class ScenarioMenuComponent implements OnInit, OnDestroy {
     gameManager.game.party.campaignMode = !gameManager.game.party.campaignMode;
     this.scenarioCache = [];
     gameManager.stateManager.after();
+  }
+
+  scenarioChart(group: string | undefined = undefined) {
+    this.dialog.open(ScenarioChartDialogComponent, {
+      panelClass: ['fullscreen-panel'],
+      backdropClass: ['fullscreen-backdrop'],
+      data: {
+        edition: this.edition,
+        group: group
+      }
+    })
+    this.close.emit();
   }
 }

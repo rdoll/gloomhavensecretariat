@@ -42,23 +42,33 @@
       z-index: -1;
     }
 
-    .ability-actions {
+    .ability-actions-container {
       position: relative;
-      margin-top: 2em;
-      padding-bottom: 0.4em;
-      width: 100%;
-      min-height: 7.4em;
-      font-size: calc(1.7em);
-      z-index: 1;
-      display: flex;
-      align-items: center;
       overflow: auto;
 
-      ghs-actions {
-        font-size: calc(1em * var(--ghs-fontsize));
+      .ability-actions {
         position: relative;
+        margin-top: 2em;
+        padding-bottom: 0.4em;
         width: 100%;
-        height: 100%;
+        min-height: 5.4em;
+        font-size: 1.7em;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+
+        ghs-actions {
+          font-size: calc(1em * var(--ghs-fontsize));
+          position: relative;
+          width: 100%;
+          height: 100%;
+        }
+      }
+
+      .bottom-spacer {
+        display: block;
+        position: relative;
+        margin-top: 2em;
       }
     }
 
@@ -108,41 +118,13 @@
       left: 0.5em;
     }
 
-    .lost {
-      position: absolute;
-      bottom: 16.5em;
-      right: 3.3em;
-      height: 2em;
-
-      img {
-        position: relative;
-        top: 0;
-        left: 0;
-        height: 100%;
-        width: auto;
-
-        &:nth-child(1) {
-          filter: var(--ghs-filter-white) var(--ghs-filter-shadow);
-        }
-
-        &:nth-child(2) {
-          position: absolute;
-
-        }
-      }
-
-      &.bottom {
-        right: 4.6em;
-        bottom: 3em;
-      }
-    }
-
     &.bottom-actions,
     &.character-actions {
-
       background-position: top;
       background-attachment: local;
       height: 100%;
+      overflow-x: unset;
+      overflow-y: auto;
 
       &.bottom-actions::before {
         background-position: top;
@@ -197,8 +179,8 @@
         justify-content: center;
         align-items: center;
         background-color: var(--ghs-ability-color);
-        mask-image: url('~/src/assets/images/level.svg');
-        -webkit-mask-image: url('~/src/assets/images/level.svg');
+        mask-image: url('~src/assets/images/level.svg');
+        -webkit-mask-image: url('~src/assets/images/level.svg');
         mask-size: 115% 170%;
         -webkit-mask-size: 115% 170%;
         mask-repeat: no-repeat;
@@ -231,26 +213,105 @@
         bottom: 2.2em;
       }
 
-      overflow-x: unset;
-      overflow-y: auto;
+      .ability-actions-container {
+        .ability-actions {
+          left: 1.6em;
+          width: 11.5em;
+          min-height: 6.4em;
+          max-height: 6.4em;
+          margin-top: 1.8em;
 
-      .ability-actions {
-        left: 1.6em;
-        width: 11.5em;
-        min-height: 6.4em;
-        max-height: 6.4em;
-        margin-top: 1.8em;
+          &.ability-bottom-actions {
+            top: 1.5em;
+            margin-top: 0;
+            margin-bottom: 2.2em;
+            padding-top: 0.2em;
+            padding-bottom: 0;
+          }
+        }
 
-        &.ability-bottom-actions {
-          top: 1.5em;
-          margin-top: 0;
-          margin-bottom: 2.2em;
-          padding-top: 0.2em;
-          padding-bottom: 0;
+        .bottom-spacer {
+          display: none;
         }
       }
     }
 
+    ghs-interactive-actions {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      bottom: 0;
+      z-index: 999;
+
+      &.interactive-actions-top {
+        position: absolute;
+        bottom: 16em;
+      }
+
+      &.interactive-actions-bottom {
+        position: absolute;
+        bottom: 2.5em;
+      }
+    }
+
+    .required-container {
+      position: absolute;
+      bottom: 16.5em;
+      right: 3.3em;
+      display: flex;
+
+      .label {
+        display: none;
+      }
+
+
+      .box {
+        position: relative;
+        display: flex;
+        flex-grow: 1;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 0.2em;
+
+        span {
+          position: relative;
+          display: block;
+          height: 2em;
+          margin: 0 0.1em;
+
+          img {
+            position: relative;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: auto;
+
+            &:nth-child(1) {
+              filter: var(--ghs-filter-white) var(--ghs-filter-shadow);
+            }
+
+            &:nth-child(2) {
+              position: absolute;
+
+            }
+          }
+
+          .value {
+            position: absolute;
+            top: 0em;
+            left: 0.3em;
+            font-size: 1.6em;
+            font-family: ghs-title;
+            color: var(--ghs-color-black);
+          }
+        }
+      }
+
+      &.bottom {
+        right: 4.6em;
+        bottom: 3em;
+      }
+    }
   }
 
   .ability-back {
@@ -316,9 +377,10 @@
         background-blend-mode: screen, luminosity;
 
         .name {
-          top: 3%;
+          top: 0.5em;
           bottom: initial;
           font-size: 2em;
+          transform: none;
         }
 
       }
@@ -370,6 +432,98 @@
         font-size: 2.6em;
         top: 0.8em;
       }
+
+      &.character-actions {
+
+        &::before {
+          background-color: var(--ghs-ability-color);
+          background-image: url('~src/assets/images/fh/character/abilities/character-ability-front.png'), url('~src/assets/images/fh/character/abilities/character-ability-front-blend.png');
+          background-blend-mode: screen, luminosity;
+        }
+
+        .name {
+          color: var(--ghs-color-black);
+          top: 1.25em;
+          font-size: 1.6em;
+          filter: none;
+        }
+
+        .level {
+          top: 1.1em;
+          left: 0.8em;
+          font-size: 1.6em;
+          font-family: ghs-title;
+          color: var(--ghs-color-black);
+          mask: none;
+          background-color: transparent;
+
+          .text {
+            background: none;
+            color: var(--ghs-color-black);
+            filter: none;
+          }
+        }
+
+        .initiative {
+          font-family: ghs-title;
+          font-size: 2.6em;
+          top: 6.4em;
+          left: 4.8em;
+        }
+
+        .logo {
+          top: 2.4em;
+          right: 1.4em;
+          bottom: initial;
+          left: initial;
+          filter: brightness(0);
+          width: 1.5em;
+        }
+
+        .index {
+          bottom: 1.6em;
+          left: 2.8em;
+        }
+      }
+
+      .required-container {
+        bottom: 15.7em;
+        right: 2.6em;
+        overflow: hidden;
+
+        &:before {
+          content: ' ';
+          display: block;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: var(--ghs-color-black);
+          opacity: 0.5;
+          z-index: 0;
+          border: 0.1em solid var(--ghs-color-white);
+          border-top-left-radius: 0.5em;
+        }
+
+        .label {
+          display: block;
+          position: relative;
+          top: 0.1em;
+          display: flex;
+          flex-grow: 1;
+          justify-content: center;
+          align-items: center;
+          padding: 0.3em;
+          border-right: 0.1em solid var(--ghs-color-white);
+          font-size: 1.5em;
+        }
+
+        &.bottom {
+          bottom: 2em;
+          right: 2.3em;
+        }
+      }
     }
 
     .ability-back {
@@ -378,6 +532,38 @@
       &.bottom-actions {
         background-image: url('~src/assets/images/monster/abilities/monster-ability-back-botton.png');
       }
+
+
+      &.character-actions {
+        background-color: var(--ghs-ability-color);
+        background-image: url('~src/assets/images/fh/character/abilities/character-ability-back.png'), url('~src/assets/images/fh/character/abilities/character-ability-back-blend.png');
+        background-blend-mode: screen, luminosity;
+
+        .name {
+          color: var(--ghs-color-black);
+          top: 0.4em;
+          font-size: 2.6em;
+          filter: none;
+        }
+      }
+    }
+  }
+
+  &.bb {
+    .ability-front {
+
+      &::before {
+        background-image: url('~src/assets/images/bb/monster/abilities/monster-ability-front.png');
+        background-position: 0em -0.6em;
+      }
+
+      &::after {
+        background-image: url('~src/assets/images/bb/monster/abilities/monster-ability-front-repeat.png');
+      }
+    }
+
+    .ability-back {
+      background-image: url('~src/assets/images/bb/monster/abilities/monster-ability-back.png');
     }
   }
 

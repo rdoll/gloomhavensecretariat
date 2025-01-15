@@ -13,6 +13,7 @@ import { Subscription } from 'rxjs';
 import { ScenarioSummaryComponent } from './summary/scenario-summary';
 
 @Component({
+	standalone: false,
   selector: 'ghs-scenario',
   templateUrl: './scenario.html',
   styleUrls: ['./scenario.scss']
@@ -30,7 +31,7 @@ export class ScenarioComponent implements OnInit, OnDestroy {
         if (gameManager.game.scenario && gameManager.game.finish && !gameManager.stateManager.scenarioSummary) {
           const conclusion = gameManager.game.finish.conclusion ? gameManager.sectionData(gameManager.game.finish.conclusion.edition).find((sectionData) => gameManager.game.finish && gameManager.game.finish.conclusion && sectionData.index == gameManager.game.finish.conclusion.index && sectionData.group == gameManager.game.finish.conclusion.group && sectionData.conclusion) : undefined;
           this.dialog.open(ScenarioSummaryComponent, {
-            panelClass: 'dialog',
+            panelClass: ['dialog'],
             disableClose: true,
             data: {
               scenario: gameManager.game.scenario,
@@ -53,9 +54,9 @@ export class ScenarioComponent implements OnInit, OnDestroy {
 
   open(event: any) {
     if (gameManager.game.scenario) {
-      this.dialog.open(ScenarioDialogComponent, { data: gameManager.game.scenario, panelClass: 'dialog' });
+      this.dialog.open(ScenarioDialogComponent, { data: gameManager.game.scenario, panelClass: ['dialog'] });
     } else {
-      this.dialog.open(EventEffectsDialog, { panelClass: 'dialog' });
+      this.dialog.open(EventEffectsDialog, { panelClass: ['dialog'] });
     }
   }
 
@@ -65,7 +66,7 @@ export class ScenarioComponent implements OnInit, OnDestroy {
     if (gameManager.game.scenario) {
       this.dialog.open(ScenarioTreasuresDialogComponent,
         {
-          panelClass: 'dialog'
+          panelClass: ['dialog']
         });
     }
   }
@@ -95,7 +96,7 @@ export class ScenarioComponent implements OnInit, OnDestroy {
           console.error("Could not find edition data!");
           return;
         }
-        gameManager.stateManager.before(roomData.marker ? "openRoomMarker" : "openRoom", scenario.index, "data.scenario." + scenario.name, '' + roomData.ref, roomData.marker || '');
+        gameManager.stateManager.before(roomData.marker ? "openRoomMarker" : "openRoom", scenario.index, "data.scenario." + scenario.name, roomData.ref, roomData.marker || '');
         gameManager.scenarioManager.openRoom(roomData, scenario, false);
         gameManager.stateManager.after();
       }
@@ -110,7 +111,7 @@ export class ScenarioComponent implements OnInit, OnDestroy {
     } else {
       this.dialog.open(SectionDialogComponent,
         {
-          panelClass: 'dialog',
+          panelClass: ['dialog'],
           data: sectionData
         });
     }

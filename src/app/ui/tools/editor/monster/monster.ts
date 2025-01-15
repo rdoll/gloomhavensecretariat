@@ -19,6 +19,7 @@ import { compactAction, DeckEditorComponent } from "../deck/deck";
 export const newMonsterJson: string = '{"name": "new-monster", "thumbnail" : "", "edition": "", "deck": "", "boss": false, "flying" : false, "hidden":false, "count": 10, "baseStat" : {}, "stats": []}';
 
 @Component({
+	standalone: false,
   selector: 'ghs-monster-editor',
   templateUrl: './monster.html',
   styleUrls: ['../editor.scss', './monster.scss']
@@ -237,7 +238,7 @@ export class MonsterEditorComponent implements OnInit {
         this.monsterData.errors.push(new FigureError(FigureErrorType.stat, "monster", this.monsterData.name, this.monsterData.edition, type, "" + level));
       }
 
-      stat = new MonsterStat(type, level, 0, 0, 0, 0);
+      stat = new MonsterStat(type, level);
       this.monsterData.stats.push(stat);
     }
     return stat;
@@ -282,18 +283,18 @@ export class MonsterEditorComponent implements OnInit {
 
         for (let level of this.levels) {
           if (!this.monsterData.stats.some((stat) => stat.level == level)) {
-            this.monsterData.stats.push(new MonsterStat(MonsterType.boss, level, 0, 0, 0, 0));
+            this.monsterData.stats.push(new MonsterStat(MonsterType.boss, level));
           }
         }
       } else {
         this.monsterData.stats = this.monsterData.stats.filter((stat) => stat.type != MonsterType.boss);
         for (let level of this.levels) {
           if (!this.monsterData.stats.some((stat) => stat.level == level && (!stat.type || stat.type == MonsterType.normal))) {
-            this.monsterData.stats.push(new MonsterStat(MonsterType.normal, level, 0, 0, 0, 0));
+            this.monsterData.stats.push(new MonsterStat(MonsterType.normal, level));
           }
 
           if (!this.monsterData.stats.some((stat) => stat.level == level && stat.type == MonsterType.elite)) {
-            this.monsterData.stats.push(new MonsterStat(MonsterType.elite, level, 0, 0, 0, 0));
+            this.monsterData.stats.push(new MonsterStat(MonsterType.elite, level));
           }
         }
       }
@@ -319,7 +320,7 @@ export class MonsterEditorComponent implements OnInit {
     const stat = this.statsForType(type, level);
     stat.actions.push(action);
     const dialog = this.dialog.open(EditorActionDialogComponent, {
-      panelClass: 'dialog',
+      panelClass: ['dialog'],
       data: { action: action, monster: this.getMonsterForLevel(level) }
     });
 
@@ -335,7 +336,7 @@ export class MonsterEditorComponent implements OnInit {
 
   editMonsterAction(type: MonsterType, action: Action, level: number) {
     const dialog = this.dialog.open(EditorActionDialogComponent, {
-      panelClass: 'dialog',
+      panelClass: ['dialog'],
       data: { action: action, monster: this.getMonsterForLevel(level) }
     });
 
@@ -372,7 +373,7 @@ export class MonsterEditorComponent implements OnInit {
 
     stat.special[index].push(action);
     const dialog = this.dialog.open(EditorActionDialogComponent, {
-      panelClass: 'dialog',
+      panelClass: ['dialog'],
       data: { action: action, monster: this.getMonsterForLevel(level) }
     });
 
@@ -392,7 +393,7 @@ export class MonsterEditorComponent implements OnInit {
 
   editSpecialAction(type: MonsterType, index: number, action: Action, level: number) {
     const dialog = this.dialog.open(EditorActionDialogComponent, {
-      panelClass: 'dialog',
+      panelClass: ['dialog'],
       data: { action: action, monster: this.getMonsterForLevel(level) }
     });
 

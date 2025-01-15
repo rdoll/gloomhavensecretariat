@@ -1,13 +1,15 @@
-import { GameMonsterEntityModel, MonsterEntity } from "./MonsterEntity";
-import { Ability } from "./data/Ability";
-import { Figure } from "./Figure";
-import { MonsterData } from "./data/MonsterData";
 import { gameManager } from "../businesslogic/GameManager";
+import { Figure } from "./Figure";
+import { GameMonsterEntityModel, MonsterEntity } from "./MonsterEntity";
 import { SummonColor } from "./Summon";
+import { Ability } from "./data/Ability";
+import { MonsterData } from "./data/MonsterData";
+import { MonsterStatEffect } from "./data/MonsterStat";
 
 export class Monster extends MonsterData implements Figure {
 
   summonColor: SummonColor = SummonColor.blue;
+  statEffect: MonsterStatEffect | undefined;
 
   // from figure
   level: number;
@@ -19,7 +21,14 @@ export class Monster extends MonsterData implements Figure {
 
   getInitiative(): number {
     const ability: Ability | undefined = gameManager.monsterManager.getAbility(this);
-    return gameManager.gameplayFigure(this) && ability && ability.initiative || 100;
+    let initiative = gameManager.gameplayFigure(this) && ability && ability.initiative || 100;
+
+    // apply Challenge #1501
+    if (gameManager.challengesManager.apply && gameManager.challengesManager.isActive(1501, 'fh') && !this.isAlly) {
+      return initiative > 10 ? initiative - 10 : 1;
+    }
+
+    return initiative;
   }
 
   // Monster
@@ -29,11 +38,14 @@ export class Monster extends MonsterData implements Figure {
   isAlly: boolean = false;
   isAllied: boolean = false;
 
+  tags: string[] = [];
+
   constructor(monsterData: MonsterData, level: number = 1) {
     super(monsterData);
     this.errors = monsterData.errors;
     this.level = level;
-    if (monsterData.baseStat) {
+    this.tags = [];
+    if (monsterData.baseStat && monsterData.stats) {
       for (let stat of monsterData.stats) {
         if (!stat.health && stat.health != 0) {
           stat.health = monsterData.baseStat.health || 0;
@@ -72,7 +84,7 @@ export class Monster extends MonsterData implements Figure {
   }
 
   toModel(): GameMonsterModel {
-    return new GameMonsterModel(this.name, this.edition, this.level, this.off, this.active, this.drawExtra, this.lastDraw, this.ability, this.abilities, this.entities.map((value) => value.toModel()), this.isAlly, this.isAllied)
+    return new GameMonsterModel(this.name, this.edition, this.level, this.off, this.active, this.drawExtra, this.lastDraw, this.ability, this.abilities, this.entities.map((value) => value.toModel()), this.isAlly, this.isAllied, this.tags)
   }
 
 
@@ -107,6 +119,8 @@ export class Monster extends MonsterData implements Figure {
     })
     this.isAlly = model.isAlly;
     this.isAllied = model.isAllied;
+    this.statEffect = undefined;
+    this.tags = model.tags || [];
   }
 }
 
@@ -123,6 +137,7 @@ export class GameMonsterModel {
   entities: GameMonsterEntityModel[];
   isAlly: boolean;
   isAllied: boolean;
+  tags: string[];
 
   constructor(name: string,
     edition: string,
@@ -135,7 +150,8 @@ export class GameMonsterModel {
     abilities: number[],
     entities: GameMonsterEntityModel[],
     isAlly: boolean,
-    isAllied: boolean) {
+    isAllied: boolean,
+    tags: string[]) {
     this.name = name;
     this.edition = edition;
     this.level = level;
@@ -148,5 +164,6 @@ export class GameMonsterModel {
     this.entities = JSON.parse(JSON.stringify(entities));
     this.isAlly = isAlly;
     this.isAllied = isAllied;
+    this.tags = JSON.parse(JSON.stringify(tags));
   }
 }

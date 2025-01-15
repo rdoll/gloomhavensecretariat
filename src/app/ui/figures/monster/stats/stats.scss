@@ -18,7 +18,7 @@
     position: absolute;
     width: 100%;
     height: 100%;
-    background-image: url('~/src/assets/images/monster/stats/standard.png');
+    background-image: url('~src/assets/images/monster/stats/standard.png');
     background-position: top;
     background-size: 100% auto;
     background-repeat: no-repeat;
@@ -31,7 +31,7 @@
     position: absolute;
     width: 100%;
     height: 100%;
-    background-image: url('~/src/assets/images/monster/stats/standard_repeat.png');
+    background-image: url('~src/assets/images/monster/stats/standard_repeat.png');
     background-position: top;
     background-size: 100% auto;
     background-repeat: repeat-y;
@@ -51,10 +51,14 @@
     filter: drop-shadow(0.1em 0.1em 0.1em var(--ghs-color-black));
     text-align: left;
     white-space: nowrap;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
     z-index: 4;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+
+    .name {
+      display: flex;
+      align-items: center;
+    }
 
     &::-webkit-scrollbar {
       display: none;
@@ -86,6 +90,27 @@
       height: auto;
       filter: var(--ghs-filter-white);
       transform: translateY(-50%);
+
+      &.catched {
+        filter: var(--ghs-filter-green) brightness(0.7);
+      }
+    }
+
+    .stat-effect {
+      display: flex;
+      justify-content: center;
+      width: calc(var(--ghs-unit) * 2);
+      height: calc(var(--ghs-unit) * 2);
+      position: relative;
+      top: calc(var(--ghs-unit) * -0.6);
+      left: calc(var(--ghs-unit) * -0.3);
+      font-family: ghs-title;
+      color: var(--ghs-color-white);
+      font-size: calc(var(--ghs-unit) * 4.5);
+      line-height: calc(var(--ghs-unit) * 4);
+      background-color: var(--ghs-color-darkgray);
+      border: 2px solid var(--ghs-color-gray);
+      border-radius: 100%;
     }
 
     &:hover {
@@ -100,6 +125,14 @@
 
       .catching {
         filter: var(--ghs-filter-gray);
+
+        &.catched {
+          filter: var(--ghs-filter-green);
+        }
+      }
+
+      .stat-effect {
+        filter: brightness(0.4);
       }
     }
   }
@@ -112,7 +145,8 @@
     bottom: 0;
     z-index: 3;
 
-    &.boss {
+    &.boss,
+    &.bb {
       left: 25%;
       right: 55%;
     }
@@ -144,6 +178,16 @@
       right: 0.1em;
       background-color: var(--ghs-color-red);
       clip-path: polygon(10% 0, 0 10%, 40% 50%, 0 90%, 10% 100%, 50% 60%, 90% 100%, 100% 90%, 60% 50%, 100% 10%, 90% 0, 50% 40%);
+    }
+
+    &.bb {
+      top: 0.1em;
+      left: 1em;
+      right: initial;
+
+      img {
+        filter: var(--ghs-filter-white) var(--ghs-filter-shadow) brightness(0.8);
+      }
     }
   }
 
@@ -177,7 +221,8 @@
     z-index: 1;
     transform: translateX(-50%);
 
-    &.boss {
+    &.boss,
+    &.bb {
       top: 5.2em;
       left: 9.6em;
       grid-template-columns: 8em 0;
@@ -201,7 +246,8 @@
       }
 
       &.normal,
-      &.boss {
+      &.boss,
+      &.bb {
         justify-self: end;
         justify-content: flex-end;
         filter: drop-shadow(0.01em 0.01em 0.01em var(--ghs-color-white));
@@ -277,7 +323,8 @@
     &.range {
       grid-template-rows: repeat(4, 25%);
 
-      &.boss {
+      &.boss,
+      &.bb {
         top: 29%;
       }
 
@@ -285,7 +332,8 @@
         line-height: 1.3em;
 
         &.normal,
-        &.boss {
+        &.boss,
+        &.bb {
           padding-right: 0.7em;
         }
 
@@ -309,11 +357,15 @@
   }
 
   &.boss::before {
-    background-image: url('~/src/assets/images/monster/stats/boss.png');
+    background-image: url('~src/assets/images/monster/stats/boss.png');
+  }
+
+  &.bb::before {
+    background-image: url('~src/assets/images/bb/monster/stats/bb-standard.png');
   }
 
   &.boss::after {
-    background-image: url('~/src/assets/images/monster/stats/boss_repeat.png');
+    background-image: url('~src/assets/images/monster/stats/boss_repeat.png');
   }
 
   .extra {
@@ -346,7 +398,8 @@
       color: var(--ghs-color-white);
     }
 
-    &.boss {
+    &.boss,
+    &.bb {
       width: 10.7em;
       height: auto;
       left: 10em;
@@ -383,7 +436,7 @@
 
   .immunities {
     position: absolute;
-    top: calc(5.6em +  2.25em - 2.25em * var(--ghs-fontsize));
+    top: calc(5.6em + 2.25em - 2.25em * var(--ghs-fontsize));
     left: calc(1.4em + 1.125em - 1.125em * var(--ghs-fontsize));
     display: grid;
     justify-items: center;
@@ -602,6 +655,11 @@
           grid-row: 6;
         }
       }
+    }
+
+    &.boss,
+    &.bb {
+      z-index: 1;
     }
   }
 

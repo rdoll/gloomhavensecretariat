@@ -1,5 +1,5 @@
-import { DIALOG_DATA, DialogRef } from "@angular/cdk/dialog";
-import { Component, Inject } from "@angular/core";
+import { DIALOG_DATA, Dialog, DialogRef } from "@angular/cdk/dialog";
+import { Component, Inject, OnDestroy, OnInit } from "@angular/core";
 import { Subscription } from "rxjs";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
 import { SettingsManager, settingsManager } from "src/app/game/businesslogic/SettingsManager";
@@ -7,14 +7,17 @@ import { Character } from "src/app/game/model/Character";
 import { GameState } from "src/app/game/model/Game";
 import { CountIdentifier } from "src/app/game/model/data/Identifier";
 import { ItemData, ItemSlot } from "src/app/game/model/data/ItemData";
-import { ghsTextSearch } from "src/app/ui/helper/Static";
+import { ghsDialogClosingHelper, ghsTextSearch } from "src/app/ui/helper/Static";
+import { ItemsBrewDialog } from "../brew/brew";
+import { ItemDistillDialogComponent } from "../character/item-distill";
 
 @Component({
+    standalone: false,
     selector: 'ghs-items-dialog',
     templateUrl: './items-dialog.html',
     styleUrls: ['./items-dialog.scss']
 })
-export class ItemsDialogComponent {
+export class ItemsDialogComponent implements OnInit, OnDestroy {
 
     gameManager: GameManager = gameManager;
     settingsManager: SettingsManager = settingsManager;
@@ -24,7 +27,7 @@ export class ItemsDialogComponent {
     editions: string[];
     editionItems: ItemData[] = [];
     items: ItemData[] = [];
-    itemsMeta: { canAdd: boolean, canBuy: boolean, canCraft: boolean, owned: boolean, assigned: number, countAvailable: number }[] = [];
+    itemsMeta: { edition: string, id: number | string, canAdd: boolean, canBuy: boolean, canCraft: boolean, owned: boolean, assigned: number, countAvailable: number }[] = [];
     selected: ItemData | undefined;
     character: Character | undefined;
     filter: string = "";
@@ -35,10 +38,11 @@ export class ItemsDialogComponent {
     itemSlotUndefined: boolean = false;
     unlocks: ItemData[] = [];
     campaignMode: boolean = false;
+    brewing: number = 0;
 
     ItemSlot: ItemSlot[] = Object.values(ItemSlot);
 
-    constructor(@Inject(DIALOG_DATA) public data: { edition: string | undefined, select: Character | undefined, affordable: boolean }, private dialogRef: DialogRef) {
+    constructor(@Inject(DIALOG_DATA) public data: { edition: string | undefined, select: Character | undefined, affordable: boolean }, private dialogRef: DialogRef, private dialog: Dialog) {
         this.selected = undefined;
         this.character = data.select;
         this.sorted = this.character != undefined && this.character.progress.items.length > 0;
@@ -90,6 +94,15 @@ export class ItemsDialogComponent {
         this.update();
     }
 
+    brewDialog(force: boolean = false) {
+        if (!gameManager.itemManager.brewingDisabled() || force) {
+            this.dialog.open(ItemsBrewDialog, {
+                panelClass: ['dialog'],
+                data: this.character
+            })
+        }
+    }
+
     update(onlyAffordable: boolean = false) {
         this.unlocks = [];
         this.selected = undefined;
@@ -98,7 +111,7 @@ export class ItemsDialogComponent {
         if (this.character && this.edition && this.campaignMode && !this.all && !this.affordable) {
             this.character.progress.items.forEach((identifier) => {
                 if (identifier.edition == this.edition && !this.items.find((itemData) => itemData.id == +identifier.name && itemData.edition == identifier.edition)) {
-                    const item = gameManager.itemManager.getItem(+identifier.name, identifier.edition, true);
+                    const item = gameManager.itemManager.getItem(identifier.name, identifier.edition, true);
                     if (item) {
                         this.items.push(item);
                     }
@@ -106,7 +119,7 @@ export class ItemsDialogComponent {
             })
         }
 
-        this.items = this.items.filter((itemData) => !this.filter || (ghsTextSearch(itemData.name, this.filter) || ghsTextSearch('' + (itemData.id < 100 ? '0' : '') + (itemData.id < 10 ? '0' : '') + itemData.id, this.filter)));
+        this.items = this.items.filter((itemData) => !this.filter || (ghsTextSearch(itemData.name, this.filter) || ghsTextSearch('' + (typeof itemData.id === 'number' && itemData.id < 100 ? '0' : '') + (typeof itemData.id === 'number' && itemData.id < 10 ? '0' : '') + itemData.id, this.filter)));
 
         this.itemSlotUndefined = this.items.find((itemData) => !itemData.slot) != undefined;
 
@@ -127,20 +140,43 @@ export class ItemsDialogComponent {
             this.sorted = this.character != undefined && this.character.progress.items.length > 0;
             this.update();
         } else {
+            this.itemsMeta = [];
+            if (this.character) {
+                this.items.forEach((itemData) => {
+                    if (this.character) {
+                        this.itemsMeta.push({ edition: itemData.edition, id: itemData.id, canAdd: gameManager.itemManager.canAdd(itemData, this.character), canBuy: gameManager.itemManager.canBuy(itemData, this.character), canCraft: gameManager.itemManager.canCraft(itemData, this.character), owned: gameManager.itemManager.owned(itemData, this.character), assigned: gameManager.itemManager.assigned(itemData), countAvailable: gameManager.itemManager.countAvailable(itemData) })
+                    }
+                })
+
+                if (gameManager.fhRules() && gameManager.game.party.campaignMode && gameManager.game.party.buildings) {
+                    const alchemist = gameManager.game.party.buildings.find((buildingModel) => buildingModel.name == 'alchemist');
+                    if (alchemist && alchemist.level) {
+                        this.brewing = alchemist.level < 3 ? 2 : 3;
+                    }
+                }
+            }
+
             this.items.sort((a, b) => {
                 if (this.sorted) {
                     if (this.character) {
-                        if (gameManager.itemManager.owned(a, this.character) && !gameManager.itemManager.owned(b, this.character)) {
+                        const A = this.itemsMeta.find((value) => value.edition == a.edition && value.id == a.id);
+                        const B = this.itemsMeta.find((value) => value.edition == b.edition && value.id == b.id);
+
+                        if (!A || !B) {
+                            return 0;
+                        }
+
+                        if (A.owned && !B.owned) {
                             return -1;
-                        } else if (gameManager.itemManager.owned(b, this.character) && !gameManager.itemManager.owned(a, this.character)) {
+                        } else if (!A.owned && B.owned) {
                             return 1;
-                        } else if ((gameManager.itemManager.canBuy(a, this.character) || gameManager.itemManager.canCraft(a, this.character)) && !gameManager.itemManager.canBuy(b, this.character) && !gameManager.itemManager.canCraft(b, this.character)) {
+                        } else if ((A.canBuy || A.canCraft) && !B.canBuy && !B.canCraft) {
                             return -1;
-                        } else if ((gameManager.itemManager.canBuy(b, this.character) || gameManager.itemManager.canCraft(b, this.character)) && !gameManager.itemManager.canBuy(a, this.character) && !gameManager.itemManager.canCraft(a, this.character)) {
+                        } else if ((B.canBuy || B.canCraft) && !A.canBuy && !A.canCraft) {
                             return 1;
-                        } else if (gameManager.itemManager.canAdd(a, this.character) && !gameManager.itemManager.canAdd(b, this.character)) {
+                        } else if (A.canAdd && !B.canAdd) {
                             return -1;
-                        } else if (gameManager.itemManager.canAdd(b, this.character) && !gameManager.itemManager.canAdd(a, this.character)) {
+                        } else if (!A.canAdd && B.canAdd) {
                             return 1;
                         } else if (a.slot && !b.slot) {
                             return -1;
@@ -159,19 +195,23 @@ export class ItemsDialogComponent {
                         return a.edition == this.currentEdition ? -1 : 1;
                     }
 
-                    return a.id - b.id;
+                    return gameManager.itemManager.sortItems(a, b);
                 }
+            })
+
+            this.itemsMeta.sort((a, b) => {
+                const A = this.items.find((value) => value.edition == a.edition && value.id == a.id);
+                const B = this.items.find((value) => value.edition == b.edition && value.id == b.id);
+
+                if (!A || !B) {
+                    return 0;
+                }
+
+                return this.items.indexOf(A) - this.items.indexOf(B);
             })
         }
 
-        if (this.character) {
-            this.itemsMeta = [];
-            this.items.forEach((itemData) => {
-                if (this.character) {
-                    this.itemsMeta.push({ canAdd: gameManager.itemManager.canAdd(itemData, this.character), canBuy: gameManager.itemManager.canBuy(itemData, this.character), canCraft: gameManager.itemManager.canCraft(itemData, this.character), owned: gameManager.itemManager.owned(itemData, this.character), assigned: gameManager.itemManager.assigned(itemData), countAvailable: gameManager.itemManager.countAvailable(itemData) })
-                }
-            })
-        }
+        this.brewing = 0;
     }
 
     toggleItemSlotFilter(slot: ItemSlot | "undefined", add: boolean = false) {
@@ -205,7 +245,7 @@ export class ItemsDialogComponent {
         if (this.unlocks.indexOf(item) != -1 && revealed) {
             gameManager.game.party.unlockedItems = gameManager.game.party.unlockedItems || [];
             if (!this.unlocked(item)) {
-                gameManager.stateManager.before("addUnlockedItem", item.edition, '' + item.id, item.name);
+                gameManager.stateManager.before("addUnlockedItem", item.edition, item.id, item.name);
                 gameManager.game.party.unlockedItems.push(new CountIdentifier('' + item.id, item.edition));
                 gameManager.stateManager.after();
                 this.updateEditionItems();
@@ -215,7 +255,7 @@ export class ItemsDialogComponent {
 
     removeUnlocked(itemData: ItemData) {
         if (this.unlocked(itemData)) {
-            gameManager.stateManager.before("removeUnlockedItem", itemData.edition, '' + itemData.id, itemData.name);
+            gameManager.stateManager.before("removeUnlockedItem", itemData.edition, itemData.id, itemData.name);
             gameManager.game.party.unlockedItems = gameManager.game.party.unlockedItems || [];
             gameManager.game.party.unlockedItems = gameManager.game.party.unlockedItems.filter((identifier) => identifier.name != '' + itemData.id || identifier.edition != itemData.edition);
             gameManager.stateManager.after();
@@ -275,6 +315,15 @@ export class ItemsDialogComponent {
         }
     }
 
+    distillItem(itemData: ItemData) {
+        if (this.character) {
+            this.dialog.open(ItemDistillDialogComponent, {
+                panelClass: ['dialog'],
+                data: { character: this.character, item: itemData }
+            })
+        }
+    }
+
     toggleEquippedItem(itemData: ItemData, force: boolean = false) {
         const disabled = gameManager.game.state != GameState.draw || gameManager.game.round > 0;
         if (this.character && (!disabled || force)) {
@@ -287,6 +336,6 @@ export class ItemsDialogComponent {
     }
 
     close() {
-        this.dialogRef.close();
+        ghsDialogClosingHelper(this.dialogRef);
     }
 }

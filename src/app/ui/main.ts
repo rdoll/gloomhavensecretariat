@@ -1,23 +1,25 @@
+import { Dialog, DialogRef } from '@angular/cdk/dialog';
 import { CdkDragDrop, CdkDragEnter, CdkDragExit, CdkDragRelease, CdkDragStart, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { SwUpdate } from '@angular/service-worker';
-import { gameManager, GameManager } from 'src/app/game/businesslogic/GameManager';
+import { Subscription } from 'rxjs';
+import { GameManager, gameManager } from 'src/app/game/businesslogic/GameManager';
 import { GameState } from 'src/app/game/model/Game';
 import { environment } from 'src/environments/environment';
 import { SettingsManager, settingsManager } from '../game/businesslogic/SettingsManager';
+import { storageManager } from '../game/businesslogic/StorageManager';
 import { Character } from '../game/model/Character';
+import { Figure } from '../game/model/Figure';
+import { Monster } from '../game/model/Monster';
+import { MonsterType } from '../game/model/data/MonsterType';
+import { MonsterNumberPickerDialog } from './figures/monster/dialogs/numberpicker-dialog';
 import { FooterComponent } from './footer/footer';
 import { SubMenu } from './header/menu/menu';
-import { Monster } from '../game/model/Monster';
-import { Figure } from '../game/model/Figure';
-import { Dialog, DialogRef } from '@angular/cdk/dialog';
-import { MonsterNumberPickerDialog } from './figures/monster/dialogs/numberpicker-dialog';
-import { MonsterType } from '../game/model/data/MonsterType';
-import { storageManager } from '../game/businesslogic/StorageManager';
+import { ghsDialogClosingHelper } from './helper/Static';
 import { PointerInputService } from './helper/pointer-input';
-import { Subscription } from 'rxjs';
 
 @Component({
+	standalone: false,
   selector: 'ghs-main',
   templateUrl: './main.html',
   styleUrls: ['./main.scss'],
@@ -29,8 +31,7 @@ export class MainComponent implements OnInit {
   GameState = GameState;
 
   figures: Figure[] = [];
-  columnSize: number = 3;
-  columns: number = 2;
+  grid: number[] = [];
 
   SubMenu = SubMenu;
 
@@ -38,6 +39,7 @@ export class MainComponent implements OnInit {
   loading: boolean = true;
   cancelLoading: boolean = false;
   welcome: boolean = false;
+  welcomeOtherEditions: boolean = false;
   fullviewChar: Character | undefined;
   showBackupHint: boolean = false;
 
@@ -54,6 +56,9 @@ export class MainComponent implements OnInit {
   standeeDialog: DialogRef<unknown, MonsterNumberPickerDialog> | undefined;
   standeeDialogSubscription: Subscription | undefined;
 
+  serverPing: number = 0;
+  serverPingInterval: any;
+
   @ViewChild('footer') footer!: FooterComponent;
 
   constructor(private element: ElementRef, private swUpdate: SwUpdate, private dialog: Dialog, private pointerInputService: PointerInputService) {
@@ -69,6 +74,7 @@ export class MainComponent implements OnInit {
             this.welcome = false;
           } else if (gameManager.game.figures.length == 0) {
             this.welcome = true;
+            this.welcomeOtherEditions = settingsManager.settings.editions.length < gameManager.editionData.length;
           } else {
             this.fullviewChar = undefined;
             this.welcome = false;
@@ -90,6 +96,20 @@ export class MainComponent implements OnInit {
               }
             }
             this.showBackupHint = settingsManager.settings.backupHint && !this.loading && !gameManager.game.scenario && (gameManager.game.party.scenarios.length > 0 || gameManager.game.party.casualScenarios.length > 0 || gameManager.game.parties.some((party) => party.casualScenarios.length > 0));
+          }
+        }
+
+        if (this.serverPing != settingsManager.settings.serverPing) {
+          if (this.serverPingInterval) {
+            clearInterval(this.serverPingInterval);
+            this.serverPingInterval = null;
+          }
+
+          this.serverPing = settingsManager.settings.serverPing;
+          if (this.serverPing > 0) {
+            this.serverPingInterval = setInterval(() => {
+              gameManager.stateManager.sendPing();
+            }, 1000 * this.serverPing);
           }
         }
       }
@@ -131,20 +151,49 @@ export class MainComponent implements OnInit {
       gameManager.stateManager.installPrompt = null;
     });
 
+    window.addEventListener('beforeunload', async () => {
+      if (settingsManager.settings.gameClock && settingsManager.settings.automaticGameClock && !gameManager.stateManager.storageBlocked) {
+        await this.automaticClockOut();
+      }
+    });
+
+    window.addEventListener('blur', async () => {
+      if (settingsManager.settings.gameClock && settingsManager.settings.automaticGameClock && settingsManager.settings.automaticGameClockFocus && !gameManager.stateManager.storageBlocked) {
+        await this.automaticClockOut();
+      }
+    });
+
     dialog.afterOpened.subscribe({
       next: (dialogRef: DialogRef) => {
         if (dialogRef.overlayRef.backdropElement && dialog.openDialogs.length > 1 && !dialogRef.overlayRef.backdropElement.classList.contains('fullscreen-backdrop')) {
           dialogRef.overlayRef.backdropElement.style.opacity = '0';
         }
 
-        let closeIcon = document.createElement('img');
-        closeIcon.src = './assets/images/close_dialog.svg';
-        let closeElement = document.createElement('a');
-        closeElement.classList.add('dialog-close-button');
-        closeElement.appendChild(closeIcon);
-        closeElement.addEventListener('click', () => dialogRef.close());
-        closeElement.title = settingsManager.getLabel('close');
-        dialogRef.overlayRef.hostElement.appendChild(closeElement);
+        if (!dialogRef.disableClose) {
+          let closeIcon = document.createElement('img');
+          closeIcon.src = './assets/images/close_dialog.svg';
+          let closeElement = document.createElement('a');
+          closeElement.classList.add('dialog-close-button');
+          closeElement.appendChild(closeIcon);
+          closeElement.addEventListener('click', () => {
+            ghsDialogClosingHelper(dialogRef);
+          });
+          closeElement.title = settingsManager.getLabel('close');
+          dialogRef.overlayRef.hostElement.appendChild(closeElement);
+
+          if (dialogRef.overlayRef.backdropElement) {
+            dialogRef.disableClose = true;
+            dialogRef.overlayRef.backdropElement.addEventListener('click', () => {
+              ghsDialogClosingHelper(dialogRef);
+            });
+          }
+
+          dialogRef.keydownEvents.subscribe(event => {
+            if (!event.ctrlKey && !event.shiftKey && !event.altKey && event.key === "Escape") {
+              ghsDialogClosingHelper(dialogRef);
+            }
+          });
+        }
       }
     })
   }
@@ -158,7 +207,7 @@ export class MainComponent implements OnInit {
     document.body.classList.add('no-select');
     try {
       await storageManager.init();
-    } catch {
+    } catch (e) {
       // continue
     }
     await settingsManager.init(!environment.production);
@@ -169,6 +218,11 @@ export class MainComponent implements OnInit {
     document.body.style.setProperty('--ghs-barsize', settingsManager.settings.barsize + '');
     document.body.style.setProperty('--ghs-fontsize', settingsManager.settings.fontsize + '');
     document.body.style.setProperty('--ghs-global-fontsize', settingsManager.settings.globalFontsize + '');
+
+
+    if (settingsManager.settings.gameClock && settingsManager.settings.automaticGameClock) {
+      this.automaticClockIn();
+    }
 
     const figure = this.figures.find((figure) => figure instanceof Character && figure.fullview);
     if (figure) {
@@ -181,7 +235,7 @@ export class MainComponent implements OnInit {
     if (this.swUpdate.isEnabled) {
       document.body.addEventListener("click", (event) => {
         if (settingsManager.settings.fullscreen && this.swUpdate.isEnabled) {
-          document.body.requestFullscreen();
+          document.body.requestFullscreen && document.body.requestFullscreen();
         }
       });
     }
@@ -202,16 +256,45 @@ export class MainComponent implements OnInit {
       if (settingsManager.settings.serverAutoconnect && gameManager.stateManager.wsState() != WebSocket.OPEN) {
         gameManager.stateManager.connect();
       }
+
+      if (settingsManager.settings.gameClock && settingsManager.settings.automaticGameClock && settingsManager.settings.automaticGameClockFocus) {
+        this.automaticClockIn();
+      }
     });
 
     if (settingsManager.settings.wakeLock && "wakeLock" in navigator) {
-      gameManager.stateManager.wakeLock = await navigator.wakeLock.request("screen");
+      try {
+        gameManager.stateManager.wakeLock = await navigator.wakeLock.request("screen");
+      } catch (e) {
+        console.error(e);
+      }
 
       document.addEventListener("visibilitychange", async () => {
         if (gameManager.stateManager.wakeLock !== null && document.visibilityState === "visible") {
           gameManager.stateManager.wakeLock = await navigator.wakeLock.request("screen");
         }
       });
+    }
+  }
+
+  automaticClockIn() {
+    const lastGameClockTimestamp = gameManager.game.gameClock.length ? gameManager.game.gameClock[0] : undefined;
+    if (!lastGameClockTimestamp || lastGameClockTimestamp.clockOut) {
+      // 7 seconds refresh timeout
+      if (lastGameClockTimestamp && lastGameClockTimestamp.clockOut && (new Date().getTime() - lastGameClockTimestamp.clockOut) < 7000) {
+        lastGameClockTimestamp.clockOut = undefined;
+      } else {
+        gameManager.toggleGameClock();
+      }
+    }
+  }
+
+  async automaticClockOut() {
+    const lastGameClockTimestamp = gameManager.game.gameClock.length ? gameManager.game.gameClock[0] : undefined;
+    if (lastGameClockTimestamp && !lastGameClockTimestamp.clockOut) {
+      gameManager.stateManager.before('gameClock.automaticGameClockOut');
+      gameManager.toggleGameClock();
+      await gameManager.stateManager.after();
     }
   }
 
@@ -250,21 +333,27 @@ export class MainComponent implements OnInit {
   startCampaign(edition: string) {
     gameManager.stateManager.before("startCampaign", 'data.edition.' + edition);
     gameManager.game.edition = edition;
-    if (settingsManager.settings.automaticTheme) {
-      if (edition == 'fh') {
-        settingsManager.setFhStyle(true);
+    if (settingsManager.settings.automaticTheme && settingsManager.settings.theme != 'modern') {
+      if (edition == 'fh' || edition == 'bb') {
+        settingsManager.set('theme', edition);
       } else {
-        settingsManager.setFhStyle(false);
+        settingsManager.set('theme', 'default');
       }
     }
     gameManager.game.party.campaignMode = true;
     gameManager.stateManager.after();
   }
 
+  cancelCampaign(edition: string) {
+    gameManager.stateManager.before("cancelCampaign", 'data.edition.' + edition);
+    gameManager.game.edition = undefined;
+    gameManager.game.party.campaignMode = false;
+    gameManager.stateManager.after();
+  }
+
   calcColumns(scrollTo: HTMLElement | undefined = undefined, skipAnimation: boolean = false): void {
+    this.grid = [999];
     if (!settingsManager.settings.columns) {
-      this.columns = 1;
-      this.columnSize = 99;
       setTimeout(() => {
         const containerElement = this.element.nativeElement.getElementsByClassName('figures')[0];
         if (containerElement) {
@@ -275,89 +364,18 @@ export class MainComponent implements OnInit {
       setTimeout(() => {
         const containerElement = this.element.nativeElement.getElementsByClassName('figures')[0];
         if (containerElement) {
-          const figureElements: any[] = Array.from(containerElement.getElementsByClassName('figure'));
-          const figures = this.figures;
-
-          let figureWidth = containerElement.clientWidth;
-          if (figureElements.length > 0) {
-            figureWidth = figureElements[0].firstChild.clientWidth;
-          }
-
-          if (figureWidth < (containerElement.clientWidth / 2.06)) {
-            let height = 0;
-            let columnSize = 0;
-            const minColumn = Math.ceil(figures.length / 2);
-
-            while ((height < containerElement.clientHeight || columnSize < minColumn) && columnSize < figureElements.length) {
-              height += figureElements[columnSize].clientHeight;
-              columnSize++;
-            }
-
-            if (columnSize == figures.length && height > containerElement.clientHeight) {
-              columnSize--;
-              height -= figureElements[columnSize].clientHeight;
-            }
-
-            if (columnSize < figures.length) {
-              this.columns = 2;
-
-              if (columnSize < minColumn) {
-                columnSize = minColumn;
-              } else if (columnSize > minColumn) {
-                columnSize--;
-              }
-
-              let activeLeftHeight = this.activeFigureSize(0, columnSize, figureElements);
-              let activeRightHeight = this.activeFigureSize(columnSize, figures.length, figureElements);
-              let activeLeftHeightMinus = this.activeFigureSize(0, columnSize - 1, figureElements);
-              let activeRightHeightMinus = this.activeFigureSize(columnSize - 1, figures.length, figureElements);
-              let activeLeftHeightPlus = this.activeFigureSize(0, columnSize + 1, figureElements);
-              let activeRightHeightPlus = this.activeFigureSize(columnSize + 1, figures.length, figureElements);
-
-              let diff = activeLeftHeight > activeRightHeight ? activeLeftHeight - activeRightHeight : activeRightHeight - activeLeftHeight;
-              let diffMinus = activeLeftHeightMinus > activeRightHeightMinus ? activeLeftHeightMinus - activeRightHeightMinus : activeRightHeightMinus - activeLeftHeightMinus;
-              let diffPlus = activeLeftHeightPlus > activeRightHeightPlus ? activeLeftHeightPlus - activeRightHeightPlus : activeRightHeightPlus - activeLeftHeightPlus;
-
-              while (diff > diffMinus) {
-                columnSize--;
-                activeLeftHeight = this.activeFigureSize(0, columnSize, figureElements);
-                activeRightHeight = this.activeFigureSize(columnSize, figures.length, figureElements);
-                activeLeftHeightMinus = this.activeFigureSize(0, columnSize - 1, figureElements);
-                activeRightHeightMinus = this.activeFigureSize(columnSize - 1, figures.length, figureElements);
-                activeLeftHeightPlus = this.activeFigureSize(0, columnSize + 1, figureElements);
-                activeRightHeightPlus = this.activeFigureSize(columnSize + 1, figures.length, figureElements);
-
-                diff = activeLeftHeight > activeRightHeight ? activeLeftHeight - activeRightHeight : activeRightHeight - activeLeftHeight;
-                diffMinus = activeLeftHeightMinus > activeRightHeightMinus ? activeLeftHeightMinus - activeRightHeightMinus : activeRightHeightMinus - activeLeftHeightMinus;
-                diffPlus = activeLeftHeightPlus > activeRightHeightPlus ? activeLeftHeightPlus - activeRightHeightPlus : activeRightHeightPlus - activeLeftHeightPlus;
-              }
-
-              while (diff > diffPlus) {
-                columnSize++;
-                activeLeftHeight = this.activeFigureSize(0, columnSize, figureElements);
-                activeRightHeight = this.activeFigureSize(columnSize, figures.length, figureElements);
-                activeLeftHeightMinus = this.activeFigureSize(0, columnSize - 1, figureElements);
-                activeRightHeightMinus = this.activeFigureSize(columnSize - 1, figures.length, figureElements);
-                activeLeftHeightPlus = this.activeFigureSize(0, columnSize + 1, figureElements);
-                activeRightHeightPlus = this.activeFigureSize(columnSize + 1, figures.length, figureElements);
-
-                diff = activeLeftHeight > activeRightHeight ? activeLeftHeight - activeRightHeight : activeRightHeight - activeLeftHeight;
-                diffMinus = activeLeftHeightMinus > activeRightHeightMinus ? activeLeftHeightMinus - activeRightHeightMinus : activeRightHeightMinus - activeLeftHeightMinus;
-                diffPlus = activeLeftHeightPlus > activeRightHeightPlus ? activeLeftHeightPlus - activeRightHeightPlus : activeRightHeightPlus - activeLeftHeightPlus;
-              }
-
-              this.columnSize = columnSize;
-            } else {
-              this.columns = 1;
-              this.columnSize = 99;
-            }
-          } else {
-            this.columns = 1;
-            this.columnSize = 99;
-          }
-
           this.lastScroll = this.lastActive();
-          this.lastScrollColumn = this.columns > 1 ? this.columnSize - 1 : -1;
+          const figureElements: any[] = Array.from(containerElement.getElementsByClassName('figure'));
+          if (figureElements.length > 0) {
+            const figureWidth = figureElements[0].firstChild.clientWidth;
+            const maxColumns = Math.floor(containerElement.clientWidth / (figureWidth * 1.025));
+            if (maxColumns > 1) {
+              const activeFigureElementHeights = figureElements.slice(0, this.lastScroll + 1).map((element) => element.clientHeight);
+              const columns = this.calcColumnsHelper(activeFigureElementHeights, containerElement.clientHeight, containerElement.clientWidth, figureWidth * 1.025).filter((column) => column.length);
+              this.grid = columns.map((column, index, self) => self.map((value) => value.length).slice(0, index + 1).reduce((a, b) => a + b), 0);
+            }
+          }
+          this.lastScrollColumn = this.grid.length > 1 ? this.grid.length - 1 : -1;
 
           this.translate(scrollTo, skipAnimation);
         }
@@ -365,18 +383,68 @@ export class MainComponent implements OnInit {
     }
   }
 
-  figureSize(start: number, end: number, figureElements: any[]) {
-    return figureElements.slice(start, end).map((element) => element.firstChild.clientHeight).reduce((a: any, b: any) => a + b, 0);
+  calcColumnsHelper(elementHeights: number[], containerHeight: number, containerWidth: number, columnWidth: number): number[][] {
+    const totalHeight = elementHeights.reduce((a, b) => a + b, 0);
+    const numColumns = Math.floor(containerWidth / columnWidth);
+    const targetHeight = Math.max(totalHeight / numColumns, settingsManager.settings.columnsForce ? 0 : containerHeight);
+    let columns: number[][] = Array.from({ length: numColumns }, () => []);
+    let columnHeights: number[] = Array(numColumns).fill(0);
+
+    let distributionColumn = 0;
+    elementHeights.forEach((elementHeight) => {
+      if (columnHeights[distributionColumn] + elementHeight > targetHeight && distributionColumn < numColumns - 1) {
+        distributionColumn++;
+      }
+      columns[distributionColumn].push(elementHeight);
+      columnHeights[distributionColumn] += elementHeight;
+    })
+
+    columns = columns.filter((column) => column.length);
+    columnHeights = columnHeights.filter((height) => height);
+
+    let iterate = true;
+    let oldDiff = 0;
+    while (iterate) {
+      let maxIndex = -1;
+      let minIndex = -1;
+      let diff = 0;
+
+      for (let i = 0; i < columnHeights.length; i++) {
+        if (Math.abs(columnHeights[i] - columnHeights[i + 1]) > diff) {
+          diff = Math.abs(columnHeights[i] - columnHeights[i + 1]);
+          if (columnHeights[i] < columnHeights[i + 1]) {
+            minIndex = i;
+            maxIndex = i + 1;
+          } else {
+            minIndex = i + 1;
+            maxIndex = i;
+          }
+        }
+      }
+
+      if (diff <= oldDiff) {
+        iterate = false;
+        break;
+      }
+
+      if (minIndex != -1 && maxIndex != -1) {
+        const elementHeight = columns[maxIndex].splice(maxIndex > minIndex ? 0 : columns[maxIndex].length - 1, 1)[0];
+        columns[minIndex].push(elementHeight);
+        columnHeights[minIndex] += elementHeight;
+        columnHeights[maxIndex] -= elementHeight;
+        oldDiff = diff;
+      } else {
+        iterate = false;
+        break;
+      }
+    }
+
+    return columns;
   }
 
-  activeFigureSize(start: number, end: number, figureElements: any[]) {
-    let lastActive = this.lastActive(start, end);
-    return figureElements.slice(start, end).filter((element: any, index: number) => index <= lastActive).map((element) => element.firstChild.clientHeight).reduce((a: any, b: any) => a + b, 0);
-  }
-
-  lastActive(start: number | undefined = undefined, end: number | undefined = undefined): number {
-    let lastActive = -1;
-    this.figures.slice(start, end).forEach((figure, index) => {
+  lastActive(): number {
+    let lastActive = 0;
+    this.figures.forEach((figure, index) => {
       if (index > lastActive && gameManager.gameplayFigure(figure)) {
         lastActive = index;
       }
@@ -393,22 +461,32 @@ export class MainComponent implements OnInit {
         }
 
         const figures = containerElement.getElementsByClassName('figure');
+        const columnMiddle = Math.ceil(this.grid.length / 2);
         for (let index = 0; index < figures.length; index++) {
           let start = 0;
-          let left = "-50%";
-          if (this.columns > 1) {
-            if (index < this.columnSize) {
-              left = "calc(-100% - var(--ghs-unit) * 0.5)";
-            } else {
-              left = "calc(var(--ghs-unit) * 0.5)";
-              start = this.columnSize;
+          let left = "0";
+          let column = this.grid.length - 1;
+          let factor = 0;
+          for (let c = this.grid.length; c > 0; c--) {
+            if (index < this.grid[c - 1]) {
+              column = c - 1;
             }
           }
+
+          factor = column - columnMiddle;
+          if (this.grid.length % 2 == 1) {
+            factor += 0.5;
+          }
+
+          left = "calc(100% * " + factor + ")";
+
+          start = column == 0 ? 0 : this.grid[column - 1];
 
           let height = 0;
           for (let i = start; i < index; i++) {
             height += figures[i].clientHeight;
           }
+
           figures[index].style.transform = "scale(1) translate(" + left + "," + height + "px)";
 
           if (scrollTo) {
@@ -491,7 +569,7 @@ export class MainComponent implements OnInit {
           entity = monster.entities.find((entity) => entity.number < 1 && gameManager.entityManager.isAlive(entity));
         }
         this.standeeDialog = this.dialog.open(MonsterNumberPickerDialog, {
-          panelClass: 'dialog',
+          panelClass: ['dialog'],
           disableClose: true,
           data: {
             monster: monster,
@@ -525,11 +603,11 @@ export class MainComponent implements OnInit {
       let datadump: any = await storageManager.datadump();
       let downloadButton = document.createElement('a');
       downloadButton.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(datadump)));
-      downloadButton.setAttribute('download', "ghs-data-dump.json");
+      downloadButton.setAttribute('download', "ghs-data-dump_" + new Date().toISOString() + ".json");
       document.body.appendChild(downloadButton);
       downloadButton.click();
       document.body.removeChild(downloadButton);
-    } catch {
+    } catch (e) {
       console.warn("Could not read datadump");
     }
   }

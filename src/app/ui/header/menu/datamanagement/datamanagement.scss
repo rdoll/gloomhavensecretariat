@@ -11,6 +11,7 @@
   display: flex;
   align-items: center;
   padding: calc(var(--ghs-unit) * 0.5 * var(--ghs-dialog-factor)) 0;
+  width: 100%;
 
   .remove {
     cursor: pointer !important;
@@ -87,6 +88,15 @@
       animation: shake .5s linear;
       color: var(--ghs-color-red) !important;
     }
+
+    &.warning {
+      animation: shake .5s linear;
+      color: var(--ghs-color-yellow) !important;
+    }
+  }
+
+  .hint-container label.hint-trigger {
+    margin-left: 0;
   }
 }
 

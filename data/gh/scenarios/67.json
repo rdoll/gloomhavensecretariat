@@ -1,11 +1,13 @@
 {
   "index": "67",
   "name": "Arcane Library",
+  "flowChartGroup": "random-scenarios",
   "coordinates": {
-    "x": 231.0999755859375,
+    "x": 231,
     "y": 1518,
     "width": 193,
-    "height": 164
+    "height": 164,
+    "gridLocation": "K-2"
   },
   "edition": "gh",
   "random": true,
@@ -18,9 +20,33 @@
     ]
   },
   "monsters": [
-    "arcane-golem:+1",
     "cave-bear",
-    "forest-imp"
+    "forest-imp",
+    "stone-golem:+1"
+  ],
+  "rules": [
+    {
+      "round": "true",
+      "always": true,
+      "requiredRooms": [
+        3
+      ],
+      "alwaysApply": true,
+      "statEffects": [
+        {
+          "identifier": {
+            "type": "monster",
+            "edition": "gh",
+            "name": "stone-golem"
+          },
+          "statEffect": {
+            "name": "arcane-golem",
+            "health": "HxC"
+          },
+          "note": "%data.scenario.rules.gh.67.1%"
+        }
+      ]
+    }
   ],
   "rooms": [
     {
@@ -97,10 +123,6 @@
       ],
       "monster": [
         {
-          "name": "arcane-golem:+1",
-          "type": "boss"
-        },
-        {
           "name": "forest-imp",
           "player3": "normal",
           "player4": "normal"
@@ -112,6 +134,10 @@
         {
           "name": "forest-imp",
           "player4": "normal"
+        },
+        {
+          "name": "stone-golem:+1",
+          "type": "elite"
         }
       ]
     }

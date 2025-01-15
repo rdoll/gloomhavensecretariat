@@ -28,11 +28,20 @@ export class BattleGoalManager {
     return this.getBattleGoals(undefined, true).find((battleGoal) => battleGoal.edition == identifier.edition && battleGoal.name == identifier.name);
   }
 
-  drawBattleGoal(character: Character) {
-    const battleGoals = this.getBattleGoals().filter((battleGoal) => !this.game.figures.find((figure) => figure instanceof Character && figure.battleGoals && figure.battleGoals.find((identifier) => battleGoal.edition == identifier.edition && battleGoal.name == identifier.name)));
+  drawBattleGoal(character: Character, splice: boolean = false) {
+    let battleGoals = this.getBattleGoals().filter((battleGoal) => !this.game.figures.find((figure) => figure instanceof Character && figure.battleGoals && figure.battleGoals.find((identifier) => battleGoal.edition == identifier.edition && battleGoal.name == identifier.name)));
+
+    if (gameManager.trialsManager.apply && gameManager.trialsManager.activeTrial('fh', 360)) {
+      battleGoals = battleGoals.filter((battleGoal) => battleGoal.checks == 2);
+    }
+
     let battleGoal = battleGoals[Math.floor(Math.random() * battleGoals.length)];
     character.battleGoals = character.battleGoals || [];
-    character.battleGoals.push(new Identifier(battleGoal.name, battleGoal.edition));
+    if (splice && character.battleGoals.length > 2) {
+      character.battleGoals.splice(character.battleGoals.length - 2, 0, new Identifier(battleGoal.name, battleGoal.edition));
+    } else {
+      character.battleGoals.push(new Identifier(battleGoal.name, battleGoal.edition));
+    }
   }
 
 }

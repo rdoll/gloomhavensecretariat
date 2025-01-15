@@ -3,8 +3,10 @@ import { Component, Inject } from "@angular/core";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
 import { Character } from "src/app/game/model/Character";
 import { Loot } from "src/app/game/model/data/Loot";
+import { ghsDialogClosingHelper } from "../../helper/Static";
 
 @Component({
+	standalone: false,
     selector: 'ghs-loot-apply-dialog',
     templateUrl: './loot-apply-dialog.html',
     styleUrls: ['./loot-apply-dialog.scss',]
@@ -33,7 +35,7 @@ export class LootApplyDialogComponent {
     }
 
     close() {
-        this.dialogRef.close(this.selected);
+        ghsDialogClosingHelper(this.dialogRef, this.selected);
     }
 
 }

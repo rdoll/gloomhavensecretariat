@@ -122,6 +122,11 @@
 
     .hint-container {
       width: 100%;
+
+      &.inline {
+        width: initial;
+        margin-right: 1em;
+      }
     }
 
     .input-container {
@@ -278,12 +283,22 @@
         cursor: initial;
         color: var(--ghs-color-disabled);
       }
+
+      &.hide-title {
+        border-bottom: none;
+        margin-bottom: 0;
+
+        label {
+          display: none;
+        }
+      }
     }
 
     &.sticky {
       position: sticky;
       top: 0;
       background-image: url('~src/assets/images/dialog_background.png');
+      z-index: 1;
 
       &.fh {
         background-image: url('~src/assets/images/fh/dialog_background_fh.png');
@@ -292,8 +307,6 @@
       &.modern {
         background-image: url('~src/assets/images/modern/dialog_background_modern.png');
       }
-
-      z-index: 1;
     }
 
   }
@@ -396,15 +409,25 @@
     border-width: calc(var(--ghs-unit) * 0.1);
     border-style: solid;
     border-color: var(--ghs-color-gray);
-    user-select: auto;
-    -webkit-user-select: auto;
     font-family: var(--ghs-font-text);
     font-size: calc(var(--ghs-unit) * 3 * var(--ghs-dialog-factor));
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    option {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      color: var(--ghs-color-white);
+      background-color: var(--ghs-color-darkgray);
+    }
   }
 
 }
 
-@media (max-width: 600px), (orientation: portrait) {
+@media (max-width: 600px),
+(orientation: portrait) {
 
   .menu-container.two-column {
     .span-xs {

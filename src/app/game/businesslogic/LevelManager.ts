@@ -2,7 +2,6 @@ import { Character } from "../model/Character";
 import { EntityValueFunction } from "../model/Entity";
 import { Game } from "../model/Game";
 import { Monster } from "../model/Monster";
-import { Objective } from "../model/Objective";
 import { ObjectiveContainer } from "../model/ObjectiveContainer";
 import { gameManager } from "./GameManager";
 import { settingsManager } from "./SettingsManager";
@@ -72,6 +71,16 @@ export class LevelManager {
     return Math.floor(this.trap(level) / 2);
   }
 
+  bbMonsterDifficutly(): number {
+    let monsterDifficulty = 2 + gameManager.game.levelAdjustment;
+    if (monsterDifficulty < 0) {
+      monsterDifficulty = 0;
+    } else if (monsterDifficulty > 4) {
+      monsterDifficulty = 4;
+    }
+    return monsterDifficulty;
+  }
+
   scenarioLevel(): number {
     const charCount = gameManager.characterManager.characterCount();
 
@@ -115,10 +124,6 @@ export class LevelManager {
             figure.level = 0;
           }
           gameManager.monsterManager.setLevel(figure, figure.level)
-        } else if (figure instanceof Objective) {
-          if (figure.health > EntityValueFunction(figure.maxHealth)) {
-            figure.health = EntityValueFunction(figure.maxHealth);
-          }
         } else if (figure instanceof ObjectiveContainer) {
           figure.entities.forEach((objectiveEntity) => {
             if (objectiveEntity.health > EntityValueFunction(figure.health)) {

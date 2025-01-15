@@ -5,6 +5,7 @@ import { ChangeDetectionStrategy, Component, ComponentRef, Directive, ElementRef
 import { settingsManager } from "src/app/game/businesslogic/SettingsManager";
 
 @Component({
+	standalone: false,
     selector: 'ghs-tooltip',
     styleUrls: ['./tooltip.scss'],
     templateUrl: './tooltip.html',
@@ -32,11 +33,12 @@ export class GhsTooltipComponent {
     @Input() hint: boolean = false;
 }
 
-@Directive({ selector: '[ghs-tooltip]' })
+@Directive({
+	standalone: false, selector: '[ghs-tooltip]' })
 export class GhsTooltipDirective implements OnInit, OnDestroy {
 
     @Input('ghs-tooltip') value = '';
-    @Input('ghs-label-args') args: string[] = [];
+    @Input('ghs-label-args') args: (string | number | boolean)[] = [];
     @Input('ghs-label-args-replace') argLabel: boolean = true;
     @Input('style') style: 'gh' | 'fh' | false = false;
     @Input() relative: boolean = false;
@@ -50,6 +52,7 @@ export class GhsTooltipDirective implements OnInit, OnDestroy {
     @Input() offsetX: number = 0;
     @Input() offsetY: number = 0;
     @Input() delay: number = 0;
+    @Input() disabled: boolean = false;
     private overlayRef!: OverlayRef;
     private timeout: any;
 
@@ -77,12 +80,12 @@ export class GhsTooltipDirective implements OnInit, OnDestroy {
 
     @HostListener('mouseover')
     show() {
-        if ((settingsManager.settings.tooltips || !this.toggable) && this.value && !this.overlayRef.hasAttached() && !this.timeout) {
+        if (!this.disabled && (settingsManager.settings.tooltips || !this.toggable) && this.value && !this.overlayRef.hasAttached() && !this.timeout) {
             this.timeout = setTimeout(() => {
                 const tooltipRef: ComponentRef<GhsTooltipComponent>
                     = this.overlayRef.attach(new ComponentPortal(GhsTooltipComponent));
                 tooltipRef.instance.value = this.value;
-                tooltipRef.instance.args = this.args;
+                tooltipRef.instance.args = this.args.map((arg) => '' + arg);
                 tooltipRef.instance.argLabel = this.argLabel;
                 tooltipRef.instance.style = this.style;
                 tooltipRef.instance.relative = this.relative;

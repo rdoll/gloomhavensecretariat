@@ -4,8 +4,10 @@ import { gameManager, GameManager } from 'src/app/game/businesslogic/GameManager
 import { ItemData } from 'src/app/game/model/data/ItemData';
 import { SettingsManager, settingsManager } from 'src/app/game/businesslogic/SettingsManager';
 import { ItemDialogComponent } from '../../../items/dialog/item-dialog';
+import { ghsDialogClosingHelper } from 'src/app/ui/helper/Static';
 
 @Component({
+	standalone: false,
   selector: 'ghs-event-random-item-dialog',
   templateUrl: './random-item-dialog.html',
   styleUrls: ['./random-item-dialog.scss'],
@@ -23,15 +25,19 @@ export class EventRandomItemDialogComponent {
   }
 
   close() {
-    this.dialogRef.close();
+    ghsDialogClosingHelper(this.dialogRef);
   }
 
   openDialog() {
-    this.dialog.open(ItemDialogComponent, { data: { item: this.item } });
+    this.dialog.open(ItemDialogComponent, {
+      panelClass: ['fullscreen-panel'],
+      disableClose: true,
+      data: { item: this.item }
+    });
   }
 
   apply() {
-    this.dialogRef.close(this.item);
+    ghsDialogClosingHelper(this.dialogRef, this.item);
   }
 
 }

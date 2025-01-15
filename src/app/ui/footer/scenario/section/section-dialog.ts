@@ -3,8 +3,10 @@ import { Component, HostListener, Inject } from "@angular/core";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
 import { ScenarioData } from "src/app/game/model/data/ScenarioData";
 import { ScenarioSummaryComponent } from "../summary/scenario-summary"
+import { ghsDialogClosingHelper } from "src/app/ui/helper/Static";
 
 @Component({
+	standalone: false,
     selector: 'ghs-section-dialog',
     templateUrl: './section-dialog.html',
     styleUrls: ['./section-dialog.scss']
@@ -18,24 +20,24 @@ export class SectionDialogComponent {
     addSection() {
         if (this.sectionData.conclusion) {
             this.dialog.open(ScenarioSummaryComponent, {
-                panelClass: 'dialog',
+                panelClass: ['dialog'],
                 data: {
                     scenario: gameManager.game.scenario,
                     success: true,
                     conclusion: this.sectionData
                 }
             })
-            this.dialogRef.close(true);
+            this.close(true);
         } else {
             gameManager.stateManager.before("addSection", this.sectionData.index, "data.section." + this.sectionData.name, "data.edition." + this.sectionData.edition);
             gameManager.scenarioManager.addSection(this.sectionData);
             gameManager.stateManager.after();
-            this.dialogRef.close(true);
+            this.close(true);
         }
     }
 
-    cancel() {
-        this.dialogRef.close(false);
+    close(result: boolean) {
+        ghsDialogClosingHelper(this.dialogRef, result);
     }
 
     @HostListener('document:keydown', ['$event'])
