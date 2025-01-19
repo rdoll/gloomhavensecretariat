@@ -7,6 +7,7 @@ import { Scenario } from "src/app/game/model/Scenario";
 import { ScenarioSummaryComponent } from "src/app/ui/footer/scenario/summary/scenario-summary";
 
 @Component({
+	standalone: false,
     selector: 'ghs-party-week-dialog',
     templateUrl: 'week-dialog.html',
     styleUrls: ['./week-dialog.scss']
@@ -48,7 +49,7 @@ export class PartyWeekDialogComponent {
             const scenario = new Scenario(conclusion as ScenarioData);
             const solved = this.isSolved(index);
             this.dialog.open(ScenarioSummaryComponent, {
-                panelClass: 'dialog',
+                panelClass: ['dialog'],
                 data: {
                     scenario: scenario,
                     conclusionOnly: true,
@@ -80,7 +81,7 @@ export class PartyWeekDialogComponent {
                         gameManager.stateManager.after();
 
                         this.dialog.open(ScenarioSummaryComponent, {
-                            panelClass: 'dialog',
+                            panelClass: ['dialog'],
                             data: {
                                 scenario: scenario,
                                 conclusionOnly: true
@@ -98,7 +99,7 @@ export class PartyWeekDialogComponent {
         }
         sectionElement.classList.add('error');
         if (gameManager.game.party.weekSections[this.week]?.indexOf(sectionElement.value) == -1) {
-            gameManager.stateManager.before("addPartyWeekSection", gameManager.game.party.name, this.week + '', sectionElement.value + '');
+            gameManager.stateManager.before("addPartyWeekSection", gameManager.game.party.name, this.week, sectionElement.value);
             gameManager.game.party.weekSections[this.week]?.push(sectionElement.value);
             sectionElement.classList.remove('error');
             sectionElement.value = "";
@@ -108,7 +109,7 @@ export class PartyWeekDialogComponent {
 
     removeSection(section: string) {
         if (gameManager.game.party.weekSections[this.week]?.indexOf(section) != -1) {
-            gameManager.stateManager.before("removePartyWeekSection", gameManager.game.party.name, this.week + '', section + '');
+            gameManager.stateManager.before("removePartyWeekSection", gameManager.game.party.name, this.week, section);
             gameManager.game.party.weekSections[this.week]?.splice(gameManager.game.party.weekSections[this.week]?.indexOf(section) || -1, 1);
             if (gameManager.game.party.weekSections[this.week]?.length == 0) {
                 delete gameManager.game.party.weekSections[this.week];

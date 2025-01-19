@@ -4,6 +4,10 @@
     <div class="scroll-container">
         <label class="title">
             <span [ghs-label]="'game.items.brewing'"></span>
+
+            <span *ngIf="gameManager.itemManager.brewingDisabled()" class="brewing-disabled">
+                <img src="./assets/images/close.svg"> <span [ghs-label]="'game.items.brewing.disabled'"></span>
+            </span>
         </label>
 
         <div class="table" [style.--ghs-summary-columns]="2 + brewing">
@@ -72,9 +76,9 @@
             </ng-container>
             <span *ngIf="!brewed || otherCharacters.length > 0 || noChar">=</span>
             <span class="placeholder text-white item" *ngIf="item && (!brewed || noChar)"
-                [ghs-label]="'game.items.brewing.item'" [ghs-label-args]="['' + item.id, item.name]"></span>
+                [ghs-label]="'game.items.brewing.item'" [ghs-label-args]="[item.id, item.name]"></span>
             <span class="placeholder text-white item" *ngIf="brewed && otherCharacters.length > 0"
-                [ghs-label]="'game.items.brewing.item'" [ghs-label-args]="['' + brewed.id, brewed.name]"></span>
+                [ghs-label]="'game.items.brewing.item'" [ghs-label-args]="[brewed.id, brewed.name]"></span>
             <span class="herb" *ngIf="!item && !brewed">
                 <img class="ghs-svg" src="./assets/images/fh/loot/unknown.svg">
             </span>
@@ -83,7 +87,7 @@
         <div class="receipe" *ngIf="brewed && otherCharacters.length == 0 && !noChar">
             <span class="placeholder text-white item"
                 [ghs-label]="'game.items.brewing.brewed' + (otherCharacter ? 'Other' : '')"
-                [ghs-label-args]="['' + brewed.id, brewed.name, gameManager.characterManager.characterName(character,true) , otherCharacter ? gameManager.characterManager.characterName(otherCharacter,true): '']"></span>
+                [ghs-label-args]="[brewed.id, brewed.name, gameManager.characterManager.characterName(character,true) , otherCharacter ? gameManager.characterManager.characterName(otherCharacter,true): '']"></span>
         </div>
 
         <ng-container *ngIf="brewed && otherCharacters.length > 0">
@@ -114,8 +118,9 @@
         <div class="menu">
             <a class="cancel" (click)="close()"><span [ghs-label]="'cancel'"></span></a>
             <a class="apply"
-                [ngClass]="{'disabled' : noChar || brewed && (otherCharacters.length == 0 || !otherCharacter) || receipe.length < 2 || !receipe[0] || !receipe[1]}"
-                (click)="brew()"><span [ghs-label]="'game.items.brewing.brew' + (otherCharacter ? 'For' : '')"
+                [ngClass]="{'disabled' : noChar || brewed && (otherCharacters.length == 0 || !otherCharacter) || receipe.length < 2 || !receipe[0] || !receipe[1], 'unavailable': gameManager.itemManager.brewingDisabled()}"
+                ghs-pointer-input (singleClick)="brew()" (doubleClick)="brew(true)"><span
+                    [ghs-label]="'game.items.brewing.brew' + (otherCharacter ? 'For' : '')"
                     [ghs-label-args]="[otherCharacter ? gameManager.characterManager.characterName(otherCharacter, true) : '']"></span></a>
         </div>
     </div>

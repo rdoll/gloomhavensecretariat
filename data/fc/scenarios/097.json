@@ -1,6 +1,14 @@
 {
   "index": "97",
   "name": "Lore Untold",
+  "flowChartGroup": "diviner",
+  "coordinates": {
+    "x": 2501,
+    "y": 61.25,
+    "width": 176,
+    "height": 141,
+    "gridLocation": "A-17"
+  },
   "edition": "fc",
   "unlocks": [
     "98",
@@ -12,6 +20,23 @@
     "black-imp",
     "living-bones",
     "living-corpse"
+  ],
+  "rules": [
+    {
+      "round": "R == 1",
+      "start": true,
+      "figures": [
+        {
+          "identifier": {
+            "type": "character",
+            "name": ".*"
+          },
+          "type": "amAdd",
+          "value": "curse:2",
+          "scenarioEffect": true
+        }
+      ]
+    }
   ],
   "rooms": [
     {

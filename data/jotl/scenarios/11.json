@@ -1,6 +1,14 @@
 {
   "index": "11",
   "name": "Defiled Sewers",
+  "flowChartGroup": "main",
+  "coordinates": {
+    "x": 421.25,
+    "y": 864.75,
+    "width": 266,
+    "height": 174,
+    "gridLocation": "D2"
+  },
   "edition": "jotl",
   "unlocks": [
     "13",
@@ -24,6 +32,9 @@
       "round": "true",
       "always": true,
       "once": true,
+      "requiredRooms": [
+        4
+      ],
       "spawns": [
         {
           "monster": {
@@ -61,9 +72,6 @@
           },
           "marker": "C"
         }
-      ],
-      "revealedRooms": [
-        4
       ]
     }
   ],

@@ -13,6 +13,7 @@ import { GameScenarioModel } from "src/app/game/model/Scenario";
 import { EntityValueFunction } from "src/app/game/model/Entity";
 
 @Component({
+	standalone: false,
     selector: 'ghs-loot',
     templateUrl: './loot-card.html',
     styleUrls: ['./loot-card.scss']
@@ -76,7 +77,7 @@ export class LootComponent implements OnInit, OnChanges {
             const conclusion = gameManager.sectionData(gameManager.currentEdition()).find((sectionData) => sectionData.index == section && sectionData.conclusion);
             if (conclusion && !force) {
                 this.dialog.open(ScenarioSummaryComponent, {
-                    panelClass: 'dialog',
+                    panelClass: ['dialog'],
                     data: {
                         scenario: conclusion,
                         conclusionOnly: true
@@ -129,7 +130,7 @@ export class LootComponent implements OnInit, OnChanges {
             event.preventDefault();
             event.stopPropagation();
             const dialog = this.dialog.open(LootApplyDialogComponent, {
-                panelClass: 'dialog',
+                panelClass: ['dialog'],
                 data: { loot: this.loot, selected: this.character, edit: this.edit }
             });
 
@@ -142,7 +143,7 @@ export class LootComponent implements OnInit, OnChanges {
                             if (this.loot.type == LootType.random_item && name) {
                                 randomItemIdentifier = charBefore.progress.equippedItems.find((value) => value.marker == "loot-random-item");
                             } else {
-                                gameManager.stateManager.before("removeLootCard", gameManager.characterManager.characterName(charBefore), "game.loot." + this.loot.type, gameManager.lootManager.getValue(this.loot) + '');
+                                gameManager.stateManager.before("removeLootCard", gameManager.characterManager.characterName(charBefore), "game.loot." + this.loot.type, gameManager.lootManager.getValue(this.loot));
                                 charBefore.lootCards = charBefore.lootCards.filter((index) => index != this.index);
                                 if (this.loot.type == LootType.money || this.loot.type == LootType.special1 || this.loot.type == LootType.special2) {
                                     charBefore.loot -= gameManager.lootManager.getValue(this.loot);
@@ -163,23 +164,23 @@ export class LootComponent implements OnInit, OnChanges {
                             const character = gameManager.game.figures.find((figure) => figure instanceof Character && figure.name == name);
                             if (character instanceof Character) {
                                 if (this.loot.type != LootType.random_item) {
-                                    gameManager.stateManager.before("addLootCard", gameManager.characterManager.characterName(character), "game.loot." + this.loot.type, gameManager.lootManager.getValue(this.loot) + '');
+                                    gameManager.stateManager.before("addLootCard", gameManager.characterManager.characterName(character), "game.loot." + this.loot.type, gameManager.lootManager.getValue(this.loot));
                                     gameManager.lootManager.applyLoot(this.loot, character, this.index);
                                     gameManager.stateManager.after();
                                 } else {
-                                    let result: ItemData | undefined = randomItemIdentifier ? gameManager.itemManager.getItem(+randomItemIdentifier.name, randomItemIdentifier.edition, true) : undefined;
+                                    let result: ItemData | undefined = randomItemIdentifier ? gameManager.itemManager.getItem(randomItemIdentifier.name, randomItemIdentifier.edition, true) : undefined;
                                     if (!result) {
                                         result = gameManager.lootManager.applyLoot(this.loot, character, this.index);
                                     }
                                     if (result) {
                                         this.dialog.open(LootRandomItemDialogComponent, {
-                                            panelClass: 'dialog',
+                                            panelClass: ['dialog'],
                                             data: { item: result, character: character }
                                         }).closed.subscribe({
                                             next: (result) => {
                                                 if (result) {
                                                     const item = result as ItemData;
-                                                    gameManager.stateManager.before("lootRandomItem", '' + item.id, item.edition, item.name, gameManager.characterManager.characterName(character));
+                                                    gameManager.stateManager.before("lootRandomItem", item.id, item.edition, item.name, gameManager.characterManager.characterName(character));
                                                     let itemIdentifier: Identifier = new Identifier('' + item.id, item.edition);
                                                     gameManager.itemManager.addItemCount(item);
                                                     if (character.lootCards.indexOf(this.index) == -1) {

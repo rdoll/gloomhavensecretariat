@@ -3,7 +3,7 @@ import { CdkDragDrop, moveItemInArray } from "@angular/cdk/drag-drop";
 import { Component, ElementRef, Input, OnInit, ViewChild } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
-import { settingsManager } from "src/app/game/businesslogic/SettingsManager";
+import { SettingsManager, settingsManager } from "src/app/game/businesslogic/SettingsManager";
 import { Ability } from "src/app/game/model/data/Ability";
 import { Action, ActionType, ActionValueType } from "src/app/game/model/data/Action";
 import { Character } from "src/app/game/model/Character";
@@ -62,6 +62,7 @@ export function compactAction(action: any) {
 }
 
 @Component({
+	standalone: false,
     selector: 'ghs-deck-editor',
     templateUrl: './deck.html',
     styleUrls: ['../editor.scss', './deck.scss']
@@ -75,6 +76,7 @@ export class DeckEditorComponent implements OnInit {
     @Input() standalone: boolean = true;
 
     gameManager: GameManager = gameManager;
+    settingsManager: SettingsManager = settingsManager;
     ActionType = ActionType;
     ActionValueType = ActionValueType;
     encodeURIComponent = encodeURIComponent;
@@ -170,6 +172,14 @@ export class DeckEditorComponent implements OnInit {
                         ability[key] = undefined;
                     }
 
+                    if (key == 'xp' && ability[key] == 0) {
+                        ability[key] = undefined;
+                    }
+
+                    if (key == 'bottomXp' && ability[key] == 0) {
+                        ability[key] = undefined;
+                    }
+
                     if (ability.actions && ability.actions.length == 0) {
                         ability.actions = undefined;
                     } else if (ability.actions) {
@@ -250,7 +260,7 @@ export class DeckEditorComponent implements OnInit {
         }
         ability.actions.push(action);
         const dialog = this.dialog.open(EditorActionDialogComponent, {
-            panelClass: 'dialog',
+            panelClass: ['dialog'],
             data: { action: action }
         });
 
@@ -266,7 +276,7 @@ export class DeckEditorComponent implements OnInit {
 
     editAbilityAction(ability: Ability, action: Action) {
         const dialog = this.dialog.open(EditorActionDialogComponent, {
-            panelClass: 'dialog',
+            panelClass: ['dialog'],
             data: { action: action }
         });
 
@@ -292,7 +302,7 @@ export class DeckEditorComponent implements OnInit {
         }
         ability.bottomActions.push(action);
         const dialog = this.dialog.open(EditorActionDialogComponent, {
-            panelClass: 'dialog',
+            panelClass: ['dialog'],
             data: { action: action }
         });
 
@@ -308,7 +318,7 @@ export class DeckEditorComponent implements OnInit {
 
     editAbilityActionBottom(ability: Ability, action: Action) {
         const dialog = this.dialog.open(EditorActionDialogComponent, {
-            panelClass: 'dialog',
+            panelClass: ['dialog'],
             data: { action: action }
         });
 

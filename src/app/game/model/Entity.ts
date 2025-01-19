@@ -2,6 +2,7 @@ import { gameManager } from "../businesslogic/GameManager";
 import { ConditionName, EntityCondition } from "./data/Condition";
 import { GameState } from "./Game";
 import { AdditionalIdentifier } from "./data/Identifier";
+import { Action } from "./data/Action";
 
 export interface Entity {
   active: boolean;
@@ -14,6 +15,10 @@ export interface Entity {
   number: number;
   markers: string[];
   tags: string[];
+  shield: Action | undefined;
+  shieldPersistent: Action | undefined;
+  retaliate: Action[];
+  retaliatePersistent: Action[];
 }
 
 export type EntityCounter = { identifier: AdditionalIdentifier, total: number, killed: number };
@@ -30,6 +35,10 @@ export function EntityValueFunction(value: string | number, L: number | undefine
 
   if (typeof value == 'number') {
     return value;
+  }
+
+  if (value == '-') {
+    return 0;
   }
 
   let expression = value;
@@ -60,17 +69,40 @@ export function EntityValueFunction(value: string | number, L: number | undefine
     return 0;
   }
 
+  let funcValue: number | undefined;
   if (func && func.startsWith('$')) {
     func = func.replace('$', '');
+    if (func.indexOf(':') != -1) {
+      funcValue = +func.split(':')[1];
+      func = func.split(':')[0];
+    }
   }
 
   if (func) {
-    switch (func) {
-      case 'math.ceil':
+    switch (true) {
+      case func == 'math.ceil':
         result = Math.ceil(result);
         break;
-      case 'math.floor':
+      case func == 'math.floor':
         result = Math.floor(result);
+        break;
+      case func == 'math.max' && funcValue != undefined:
+        result = Math.min(result, funcValue);
+        break;
+      case func == 'math.maxCeil' && funcValue != undefined:
+        result = Math.ceil(Math.min(result, funcValue));
+        break;
+      case func == 'math.maxFloor' && funcValue != undefined:
+        result = Math.floor(Math.min(result, funcValue));
+        break;
+      case func == 'math.min' && funcValue != undefined:
+        result = Math.max(result, funcValue);
+        break;
+      case func == 'math.minCeil' && funcValue != undefined:
+        result = Math.ceil(Math.max(result, funcValue));
+        break;
+      case func == 'math.minFloor' && funcValue != undefined:
+        result = Math.floor(Math.max(result, funcValue));
         break;
       default:
         console.error("Unknown expression: " + func + "(" + match + ")");

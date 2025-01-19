@@ -2,8 +2,10 @@ import { DialogRef, DIALOG_DATA } from "@angular/cdk/dialog";
 import { Component, EventEmitter, Inject, OnInit } from "@angular/core";
 import { LootDeck } from "src/app/game/model/data/Loot";
 import { LootDeckChange } from "./loot-deck";
+import { ghsDialogClosingHelper } from "../../helper/Static";
 
 @Component({
+	standalone: false,
   selector: 'ghs-loot-deck-fullscreen',
   templateUrl: './loot-deck-fullscreen.html',
   styleUrls: ['./loot-deck-fullscreen.scss',]
@@ -40,6 +42,9 @@ export class LootDeckFullscreenComponent implements OnInit {
     this.after.emit(change);
   }
 
+  close() {
+    ghsDialogClosingHelper(this.dialogRef);
+  }
 
 }
 

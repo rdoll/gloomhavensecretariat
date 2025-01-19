@@ -1,4 +1,4 @@
-import { DialogRef, DIALOG_DATA } from "@angular/cdk/dialog";
+import { DIALOG_DATA, DialogRef } from "@angular/cdk/dialog";
 import { Component, HostListener, Inject, OnInit } from "@angular/core";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
 import { SettingsManager, settingsManager } from "src/app/game/businesslogic/SettingsManager";
@@ -7,9 +7,11 @@ import { GameState } from "src/app/game/model/Game";
 import { Monster } from "src/app/game/model/Monster";
 import { MonsterEntity } from "src/app/game/model/MonsterEntity";
 import { MonsterType } from "src/app/game/model/data/MonsterType";
+import { ghsDialogClosingHelper } from "src/app/ui/helper/Static";
 
 
 @Component({
+    standalone: false,
     selector: 'ghs-monster-numberpicker-dialog',
     templateUrl: 'numberpicker-dialog.html',
     styleUrls: ['./numberpicker-dialog.scss']
@@ -54,7 +56,6 @@ export class MonsterNumberPickerDialog implements OnInit {
             if (this.timeout) {
                 clearTimeout(this.timeout);
                 this.timeout = undefined;
-
                 const combined: number = +event.key + 10;
                 const thisKey: number = +event.key;
                 if (combined <= this.max) {
@@ -63,16 +64,32 @@ export class MonsterNumberPickerDialog implements OnInit {
                     this.pickNumber(1);
                     this.pickNumber(thisKey);
                 }
-            } else if (event.key === '1' && this.range.filter((number) => number >= 10).some((number) => !this.hasNumber(number))) {
+
+            } else if (event.key === '1' && this.range.filter((number) => number > 10).some((number) => !this.hasNumber(number))) {
                 this.timeout = setTimeout(() => {
-                    this.pickNumber(1);
+                    this.pickNumber(+event.key);
+                    this.timeout = undefined;
                 }, 1000);
+            } else if (event.key === '0' && this.max > 9) {
+                this.pickNumber(10);
             } else {
                 this.pickNumber(+event.key);
             }
 
             event.preventDefault();
             event.stopPropagation();
+        } else if (event.key === 's' && !this.entity) {
+            this.summon = !this.summon;
+        } else if (event.key === 't') {
+            if (this.entity) {
+                this.toggleMonsterType();
+            }
+
+            if (this.type == MonsterType.normal) {
+                this.type = MonsterType.elite;
+            } else if (this.type == MonsterType.elite) {
+                this.type = MonsterType.normal;
+            }
         }
     }
 
@@ -93,7 +110,7 @@ export class MonsterNumberPickerDialog implements OnInit {
     }
 
     randomStandee() {
-        const count = EntityValueFunction(this.monster.standeeCount || this.monster.count, this.monster.level);
+        const count = gameManager.monsterManager.monsterStandeeMax(this.monster);
         let number = Math.floor(Math.random() * count) + 1;
         while (this.monster.entities.some((monsterEntity) => monsterEntity.number == number)) {
             number = Math.floor(Math.random() * count) + 1;
@@ -147,13 +164,13 @@ export class MonsterNumberPickerDialog implements OnInit {
                 }
             }
             gameManager.stateManager.after();
-            if ((this.entities ? this.monster.entities.filter((entity) => entity.number > 0).length : gameManager.entityManager.entities(this.monster).length) == EntityValueFunction(this.monster.count, this.monster.level) || !this.entity && this.entities) {
-                this.dialogRef.close();
-            } else if (this.entity && this.entities && this.monster.entities.filter((entity) => entity.number > 0).length == EntityValueFunction(this.monster.count, this.monster.level) - 1) {
+            if ((this.entities ? this.monster.entities.filter((entity) => entity.number > 0).length : gameManager.entityManager.entities(this.monster).length) == gameManager.monsterManager.monsterStandeeMax(this.monster) || !this.entity && this.entities) {
+                ghsDialogClosingHelper(this.dialogRef);
+            } else if (this.entity && this.entities && this.monster.entities.filter((entity) => entity.number > 0).length == gameManager.monsterManager.monsterStandeeMax(this.monster) - 1) {
                 this.nextStandee();
             }
         } else if (this.change && this.entity && this.entity.number != number) {
-            gameManager.stateManager.before("updateStandee", "data.monster." + this.monster.name, "monster." + this.entity.type, "" + number);
+            gameManager.stateManager.before("updateStandee", "data.monster." + this.monster.name, "monster." + this.entity.type, "" + this.entity.number, "" + number);
             let existing = gameManager.monsterManager.monsterStandeeUsed(this.monster, number);
             if (existing) {
                 let otherNumber = -1;
@@ -174,12 +191,8 @@ export class MonsterNumberPickerDialog implements OnInit {
 
     toggleMonsterType() {
         if (this.entity && (this.entity.type == MonsterType.normal || this.entity.type == MonsterType.elite)) {
-            const normalStat = this.monster.stats.find((stat) => {
-                return stat.level == this.monster.level && stat.type == MonsterType.normal;
-            });
-            const eliteStat = this.monster.stats.find((stat) => {
-                return stat.level == this.monster.level && stat.type == MonsterType.elite;
-            });
+            const normalStat = gameManager.monsterManager.getStat(this.monster, MonsterType.normal);
+            const eliteStat = gameManager.monsterManager.getStat(this.monster, MonsterType.elite);
             if (normalStat && eliteStat) {
                 gameManager.stateManager.before("changeMonsterType", "data.monster." + this.monster.name, "monster." + this.entity.type, "" + this.entity.number, this.entity.type == MonsterType.normal ? MonsterType.elite : MonsterType.normal);
                 this.entity.type = this.entity.type == MonsterType.normal ? MonsterType.elite : MonsterType.normal;
@@ -189,6 +202,17 @@ export class MonsterNumberPickerDialog implements OnInit {
                 } else if (this.entity.health < this.entity.maxHealth && this.entity.health == EntityValueFunction(this.entity.type == MonsterType.normal ? eliteStat.health : normalStat.health, this.monster.level)) {
                     this.entity.health = this.entity.maxHealth;
                 }
+
+                if (this.monster.bb) {
+                    if (this.monster.entities.every((entity) => entity.type == MonsterType.elite)) {
+                        if (this.monster.tags.indexOf('bb-elite') == -1) {
+                            this.monster.tags.push('bb-elite');
+                        }
+                    } else if (this.monster.tags.indexOf('bb-elite') != -1) {
+                        this.monster.tags = this.monster.tags.filter((tag) => tag != 'bb-elite');
+                    }
+                }
+
                 gameManager.stateManager.after();
             } else {
                 console.warn("Missing stats!", this.monster);
@@ -197,6 +221,6 @@ export class MonsterNumberPickerDialog implements OnInit {
     }
 
     close() {
-        this.dialogRef.close(true);
+        ghsDialogClosingHelper(this.dialogRef, true);
     }
 }

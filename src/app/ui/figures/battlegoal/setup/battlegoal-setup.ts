@@ -1,4 +1,3 @@
-import { DialogRef } from "@angular/cdk/dialog";
 import { Component } from "@angular/core";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
 import { BattleGoal } from "src/app/game/model/data/BattleGoal";
@@ -6,6 +5,7 @@ import { Identifier } from "src/app/game/model/data/Identifier";
 
 
 @Component({
+	standalone: false,
   selector: 'ghs-battlegoal-setup',
   templateUrl: './battlegoal-setup.html',
   styleUrls: ['./battlegoal-setup.scss']
@@ -17,7 +17,7 @@ export class BattleGoalSetupDialog {
   editions: string[] = [];
   battleGoals: BattleGoal[] = [];
 
-  constructor(private dialogRef: DialogRef) {
+  constructor() {
     this.editions = gameManager.battleGoalManager.getBattleGoalEditions();
     if (gameManager.game.edition && gameManager.battleGoalManager.getBattleGoalEditions().indexOf(gameManager.game.edition) != -1 && (!gameManager.game.battleGoalEditions || gameManager.game.battleGoalEditions.length == 0 || gameManager.game.battleGoalEditions.length == 1 && gameManager.game.battleGoalEditions.indexOf(gameManager.game.edition) != -1)) {
       this.selectEdition(gameManager.game.edition);
@@ -75,9 +75,5 @@ export class BattleGoalSetupDialog {
     }
     gameManager.stateManager.after();
     this.update();
-  }
-
-  close() {
-    this.dialogRef.close();
   }
 }

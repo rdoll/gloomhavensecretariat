@@ -3,8 +3,8 @@ import { Overlay } from '@angular/cdk/overlay';
 import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import { GameManager, gameManager } from 'src/app/game/businesslogic/GameManager';
 import { SettingsManager, settingsManager } from 'src/app/game/businesslogic/SettingsManager';
-import { ActionType } from 'src/app/game/model/data/Action';
 import { Monster } from 'src/app/game/model/Monster';
+import { ActionType } from 'src/app/game/model/data/Action';
 import { MonsterStat } from 'src/app/game/model/data/MonsterStat';
 import { MonsterType } from 'src/app/game/model/data/MonsterType';
 import { ghsDefaultDialogPositions } from 'src/app/ui/helper/Static';
@@ -14,6 +14,7 @@ import { MonsterStatDialogComponent } from './stat-dialog';
 import { MonsterStatsDialogComponent } from './stats-dialog';
 
 @Component({
+  standalone: false,
   selector: 'ghs-monster-stats',
   templateUrl: './stats.html',
   styleUrls: ['./stats.scss']
@@ -29,12 +30,17 @@ export class MonsterStatsComponent implements OnInit {
   gameManager: GameManager = gameManager;
   settingsManager: SettingsManager = settingsManager;
 
-  stats: MonsterStat | undefined = undefined;
-  eliteStats: MonsterStat | undefined = undefined;
+  stats: MonsterStat = new MonsterStat(MonsterType.normal);
+  hideStats: boolean = false;
+  eliteStats: MonsterStat = new MonsterStat(MonsterType.elite);
+  hideEliteStats: boolean = false;
   statOverview: boolean = false;
   highlightActions: ActionType[] = [ActionType.shield, ActionType.retaliate];
   edition: string = "";
   catching: boolean = false;
+  catched: boolean = false;
+  flying: boolean = false;
+  monsterCopy!: Monster;
 
   @ViewChild('levelButton', { read: ElementRef }) levelButton!: ElementRef;
 
@@ -42,53 +48,48 @@ export class MonsterStatsComponent implements OnInit {
 
 
   ngOnInit(): void {
-    this.setStats();
-    if (!settingsManager.settings.statAnimations) {
-      this.highlightActions = [];
-    }
-    this.edition = gameManager.getEdition(this.monster);
-    this.catching = this.monster.catching && gameManager.game.party.buildings.find((buildingModel) => buildingModel.name == 'stables' && buildingModel.level > 0 && buildingModel.state != 'wrecked') != undefined;
-    gameManager.uiChange.subscribe({
-      next: () => {
-        if (!settingsManager.settings.statAnimations) {
-          this.highlightActions = [];
-        } else {
-          this.highlightActions = [ActionType.shield, ActionType.retaliate];
-        }
-        this.edition = gameManager.getEdition(this.monster);
-        this.catching = this.monster.catching && gameManager.game.party.buildings.find((buildingModel) => buildingModel.name == 'stables' && buildingModel.level > 0 && buildingModel.state != 'wrecked') != undefined;
-      }
-    })
+    this.monsterCopy = JSON.parse(JSON.stringify(this.monster));
+    this.update();
+    gameManager.uiChange.subscribe({ next: () => { this.update(); } });
   }
 
-  hideStats(type: MonsterType) {
-    return !this.forceStats && settingsManager.settings.hideStats && this.monster.entities.every((monsterEntity) => monsterEntity.dead || monsterEntity.type != type);
+  update() {
+    if (!settingsManager.settings.statAnimations) {
+      this.highlightActions = [];
+    } else {
+      this.highlightActions = [ActionType.shield, ActionType.retaliate];
+    }
+    this.edition = gameManager.getEdition(this.monster);
+    this.catching = this.monster.pet != undefined && gameManager.buildingsManager.petsAvailable;
+    this.catched = this.catching && gameManager.buildingsManager.petsEnabled && gameManager.game.party.pets.find((value) => value.edition == this.monster.edition && value.name == this.monster.pet) != undefined;
+    this.setStats();
+    this.flying = this.monster.flying && (!this.monster.statEffect || this.monster.statEffect.flying != 'disabled') || this.monster.statEffect != undefined && this.monster.statEffect.flying == true;
   }
 
   setStats() {
     if (this.monster.boss) {
       this.stats = gameManager.monsterManager.getStat(this.monster, MonsterType.boss);
+      this.hideStats = !this.forceStats && settingsManager.settings.hideStats && this.monster.entities.every((monsterEntity) => monsterEntity.dead || monsterEntity.type != MonsterType.boss);
     } else {
-      this.stats = gameManager.monsterManager.getStat(this.monster, MonsterType.normal);
-      this.eliteStats = gameManager.monsterManager.getStat(this.monster, MonsterType.elite);
+      const statsType = !this.monster.bb || this.monster.tags.indexOf('bb-elite') == -1 ? MonsterType.normal : MonsterType.elite;
+      this.stats = gameManager.monsterManager.getStat(this.monster, statsType);
+      this.hideStats = !this.forceStats && settingsManager.settings.hideStats && this.monster.entities.every((monsterEntity) => monsterEntity.dead || monsterEntity.type != statsType);
+      if (!this.monster.bb) {
+        this.eliteStats = gameManager.monsterManager.getStat(this.monster, MonsterType.elite);
+        this.hideEliteStats = !this.forceStats && settingsManager.settings.hideStats && this.monster.entities.every((monsterEntity) => monsterEntity.dead || monsterEntity.type != MonsterType.elite);
+      }
     }
   }
 
   statsForType(type: MonsterType): MonsterStat {
-    let stat = this.monster.stats.find((monsterStat) => {
-      return monsterStat.level == this.monster.level && monsterStat.type == type;
-    });
-    if (!stat) {
-      stat = new MonsterStat(type, this.monster.level, 0, 0, 0, 0);
-      this.monster.stats.push(stat);
-    }
-    return stat;
+    return gameManager.monsterManager.getStat(this.monster, type);
   }
 
   setLevel(value: number) {
     if (value != this.monster.level) {
-      gameManager.stateManager.before("setLevel", "data.monster." + this.monster.name, '' + value);
+      gameManager.stateManager.before("setLevel", "data.monster." + this.monster.name, value);
       gameManager.monsterManager.setLevel(this.monster, value);
+      gameManager.monsterManager.setLevel(this.monsterCopy, value);
       this.setStats();
       gameManager.stateManager.after();
     }
@@ -96,7 +97,7 @@ export class MonsterStatsComponent implements OnInit {
 
   openLevelDialog() {
     const levelDialog = this.dialog.open(MonsterLevelDialogComponent, {
-      panelClass: 'dialog',
+      panelClass: ['dialog'],
       data: this.monster,
       positionStrategy: this.overlay.position().flexibleConnectedTo(this.levelButton).withPositions(ghsDefaultDialogPositions())
     });
@@ -110,23 +111,30 @@ export class MonsterStatsComponent implements OnInit {
   }
 
   openStatsPopup() {
-    if (!this.noClick) {
-      this.dialog.open(MonsterStatsDialogComponent, { panelClass: 'dialog', data: this.monster });
+    if (!this.noClick && !this.monster.bb) {
+      this.dialog.open(MonsterStatsDialogComponent, {
+        panelClass: ['dialog'],
+        data: this.monster
+      });
     } else if (!this.disablePoup) {
-      this.dialog.open(MonsterStatDialogComponent, { panelClass: 'fullscreen-panel', data: { monster: this.monster, forceStats: this.forceStats } });
+      this.openStatPopup();
     }
   }
 
   openStatPopup() {
     if (!this.noClick && !this.disablePoup) {
-      this.dialog.open(MonsterStatDialogComponent, { panelClass: 'fullscreen-panel', data: { monster: this.monster, forceStats: this.forceStats } });
+      this.dialog.open(MonsterStatDialogComponent, {
+        panelClass: ['fullscreen-panel'],
+        disableClose: true,
+        data: { monster: this.monster, forceStats: this.forceStats }
+      });
     }
   }
 
   openEntityMenu(event: any): void {
     if (!this.noClick) {
       this.dialog.open(EntityMenuDialogComponent, {
-        panelClass: 'dialog',
+        panelClass: ['dialog'],
         data: {
           entity: undefined,
           figure: this.monster

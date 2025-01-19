@@ -2,82 +2,30 @@
   [ngClass]="{'denied' : gameManager.stateManager.permissions && !gameManager.stateManager.permissions.scenario}">
   <div class="scroll-container">
     <div class="title">
-      <span *ngIf="scenario.index" class="index">#{{scenario.index}}</span>
+      <span *ngIf="scenario.index && !scenario.hideIndex" class="index">#{{scenario.index}}</span>
       <span class="name">
         <span [ghs-label]="(scenario.name ? 'data.scenario.' +
       scenario.name : (scenario.custom ? 'scenario.custom' : 'scenario'))"></span>
       </span>
-      <span class="treasures" (click)="openTreasures($event)"
+      <span *ngIf="scenario.level" class="scenario-level-container">
+        <span class="scenario-level" [ghs-label]="'scenario.level'" [ghs-label-args]="[scenario.level + '']"
+          [ngClass]="'level-' +  scenario.level"></span>
+      </span>
+      <span tabclick class="treasures" (click)="openTreasures($event)"
         *ngIf="settingsManager.settings.scenarioRooms &&  settingsManager.settings.treasures && gameManager.scenarioManager.getTreasures(scenario, gameManager.game.sections).length > 0">
         <img class="ghs-svg" src="./assets/images/scenario/treasure.svg">
       </span>
     </div>
 
-    <div class="setup" *ngIf="setup || gameManager.game.round < 1">
+    <ghs-scenario-setup #setupComponent [scenario]="scenario"
+      *ngIf="setup || gameManager.game.round < 1"></ghs-scenario-setup>
 
-      <span class="title">
-        <span><span [ghs-label]="'scenario.setup'"></span></span>
-      </span>
-
-      <div class="setup-container">
-        <label class="checkbox">
-          <input type="checkbox" [(ngModel)]="detailed"><span [ghs-label]="'scenario.setup.detailed'"></span>
-        </label>
-
-        <label class="checkbox" *ngIf="hasSpoiler || spoiler">
-          <input type="checkbox" [(ngModel)]="spoiler" (change)="updateMonster()"><span
-            [ghs-label]="'scenario.setup.spoiler'"></span>
-        </label>
-      </div>
-
-      <div class="setup-container" [ngClass]="{'detailed' : detailed}">
-        <div class="loot-config" *ngIf="lootConfig.length > 0">
-          <div class="title" [ghs-label]="'game.loot'"></div>
-          <div class="loot" *ngFor="let loot of lootConfig">
-            <span class="spacer" *ngIf="loot.type != 'random_item'"></span>
-            <span class="checkbox" *ngIf="loot.type == 'random_item'" [ngClass]="{'checked' : lootRandomItem}"></span>
-            <img class="ghs-svg" [src]="'./assets/images/fh/loot/' +loot.type + '.svg'">
-            <span class="sign">x</span>{{loot.value}}
-          </div>
-        </div>
-        <div class="monsters">
-          <ng-container *ngIf="!detailed">
-            <div class="monster" *ngFor="let monsterData of monsters" (click)="openStats(monsterData)">
-              <div class="image">
-                <div class="outer-border">
-                  <div class="inner-border">
-                    <div class="image-container">
-                      <img *ngIf="!monsterData.noThumbnail && settingsManager.settings.artwork"
-                        [src]="gameManager.monsterManager.monsterThumbnail(monsterData)">
-                      <span *ngIf="monsterData.noThumbnail || !settingsManager.settings.artwork" class="letter">
-                        <span
-                          *ngFor="let namePart of (settingsManager.getLabel('data.monster.' + monsterData.name).split(' '))">{{namePart[0]}}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <span class="boss" *ngIf="monsterData.boss || monsterData.tags.indexOf('boss') != -1"><img
-                    src="./assets/images/monster/enemy.png" /></span>
-                <span class="custom" *ngIf="monsterData.standeeShare">*</span>
-              </div>
-              <div class="name"><span [ghs-label]="'data.monster.' + monsterData.name"></span></div>
-            </div>
-          </ng-container>
-
-          <ng-container *ngIf="detailed">
-            <div class="monster" *ngFor="let monsterData of monsters" (click)="openStats(monsterData)">
-              <ghs-monster-stats [monster]="toMonster(monsterData)" [forceStats]="true" [noClick]="true"
-                [disablePoup]="true"></ghs-monster-stats>
-            </div>
-          </ng-container>
-        </div>
-      </div>
-    </div>
-
-
+    <a class="favors" *ngIf="gameManager.game.round < 1 && gameManager.trialsManager.favorsEnabled" (click)="openFavors()">
+      <span [ghs-label]="'scenario.favors'"></span>
+    </a>
 
     <div class="sections">
-      <span *ngFor="let roomData of gameManager.scenarioManager.openRooms();" class="section room">
+      <span *ngFor="let roomData of openRooms" class="section room">
         <img class="ghs-svg" src="./assets/images/scenario/door-open.svg">
         {{roomData.ref}}
         <span class="marker" *ngIf="roomData.marker" [ghs-label]="'%game.mapMarker.' + roomData.marker +'%'"></span>
@@ -93,15 +41,13 @@
     </div>
 
     <div class="open-sections">
-      <span *ngFor="let roomData of gameManager.scenarioManager.closedRooms();" class="section room available"
-        (click)="openRoom(roomData)">
+      <span tabclick *ngFor="let roomData of closedRooms" class="section room available" (click)="openRoom(roomData)">
         <img class="ghs-svg" src="./assets/images/scenario/door.svg">
-        <span [ghs-label]="roomData.marker ? 'scenario.openRoomMarker' : 'scenario.openRoom'"
+        <span [ghs-label]="roomData.marker ? 'scenario.openRoomMarkerRef' : 'scenario.openRoomRef'"
           [ghs-label-args]="[roomData.ref, roomData.marker || '']"></span>
       </span>
-      <span *ngFor="let section of gameManager.scenarioManager.availableSections();" class="section available"
-        (click)="addSection(section)">
-        <img *ngIf="!section.conclusion" class="ghs-svg" src="./assets/images/scenario/lock.svg">
+      <span tabclick *ngFor="let section of availableSections" class="section available" (click)="addSection(section)">
+        <img *ngIf="!section.conclusion" class="ghs-svg" src="./assets/images/lock.svg">
         <img *ngIf="section.conclusion" class="ghs-svg" src="./assets/images/scenario/conclusion.svg">
         <span *ngIf="!section.conclusion || !section.name">#{{section.index}}</span>
         <span class="marker" *ngIf="section.marker" [ghs-label]="'%game.mapMarker.' + section.marker +'%'"></span>
@@ -112,24 +58,37 @@
     </div>
 
     <label class="setup-checkbox" *ngIf="gameManager.game.round > 0">
-      <input type="checkbox" [(ngModel)]="setup" (change)="updateMonster()"><span [ghs-label]="'scenario.setup'"></span>
+      <input type="checkbox" [(ngModel)]="setup" (change)="setupComponent && setupComponent.updateMonster()"><span
+        [ghs-label]="'scenario.setup'"></span>
     </label>
+
+    <a class="favors" *ngIf="gameManager.game.round > 0 && gameManager.trialsManager.favorsEnabled" (click)="openFavors()">
+      <span [ghs-label]="'scenario.favors'"></span>
+    </a>
+
+    <div class="additional">
+      <a *ngIf="gameManager.game.appliedScenarioRules.length || gameManager.game.discardedScenarioRules.length"
+        (click)="showScenarioRules()"><span [ghs-label]="'scenario.rules.show'"></span>
+      </a>
+    </div>
 
     <div class="menu">
       <label><span [ghs-label]="'scenario.finish'"></span></label>
       <div class="buttons">
-        <a class="failure" (click)="finishScenario(false)"><span [ghs-label]="'scenario.finish.failure'"></span></a>
+        <a class="failure" tabclick (click)="finishScenario(false)"><span
+            [ghs-label]="'scenario.finish.failure'"></span></a>
         <span class="spacer"></span>
-        <a class="success" (click)="finishScenario(true)"><span [ghs-label]="'scenario.finish.success'"></span></a>
+        <a class="success" tabclick (click)="finishScenario(true)"><span
+            [ghs-label]="'scenario.finish.success'"></span></a>
       </div>
       <div class="cancel">
-        <a (click)="cancelScenario()"><span [ghs-label]="'scenario.cancel'"></span></a>
-        <a (click)="resetScenario()"><span [ghs-label]="'scenario.reset'"></span></a>
+        <a tabclick (click)="cancelScenario()"><span [ghs-label]="'scenario.cancel'"></span></a>
+        <a tabclick (click)="resetScenario()"><span [ghs-label]="'scenario.reset'"></span></a>
       </div>
     </div>
 
     <div class="event-effects" *ngIf="setup || gameManager.game.round < 1">
-      <a (click)="openEventEffects($event)"><img class="ghs-svg" src="./assets/images/event.svg"> <span
+      <a tabclick (click)="openEventEffects($event)"><img class="ghs-svg" src="./assets/images/event.svg"> <span
           [ghs-label]="'scenario.eventEffects'"></span></a>
     </div>
   </div>

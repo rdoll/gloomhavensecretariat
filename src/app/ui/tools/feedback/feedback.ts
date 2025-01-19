@@ -3,6 +3,7 @@ import { Component } from "@angular/core";
 import { FeedbackDialogComponent } from "./feedback-dialog";
 
 @Component({
+	standalone: false,
     selector: 'ghs-feedback-tool',
     templateUrl: './feedback.html',
     styleUrls: ['./feedback.scss']
@@ -15,7 +16,7 @@ export class FeedbackToolComponent {
 
     open() {
         this.dialog.open(FeedbackDialogComponent, {
-            panelClass: 'dialog'
+            panelClass: ['dialog']
         })
     }
 }

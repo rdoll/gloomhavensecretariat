@@ -6,8 +6,8 @@
       <img [src]="character.iconUrl" />
     </span>
     <div class="summons">
-      <ghs-summon-entity *ngFor="let summon of character.summons" [character]="character" [summon]="summon">
-      </ghs-summon-entity>
+      <ghs-standee *ngFor="let summon of character.summons" [figure]="character" [entity]="summon">
+      </ghs-standee>
     </div>
   </div>
 
@@ -48,9 +48,13 @@
     </div>
 
     <div class="row">
-      <ghs-conditions class="dialog" [entity]="character" [figure]="character"
-        [entityConditions]="character.entityConditions" [immunities]="character.immunities" type="character" [columns]="6">
-      </ghs-conditions>
+      <div class="dialog">
+        <div class="dialog-container">
+          <ghs-conditions [entity]="character" [figure]="character" [entityConditions]="character.entityConditions"
+            [immunities]="character.immunities" type="character" [columns]="6">
+          </ghs-conditions>
+        </div>
+      </div>
     </div>
 
     <div class="row sheet">

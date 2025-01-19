@@ -1,18 +1,20 @@
+import { CountIdentifier } from "src/app/game/model/data/Identifier";
 import { Character } from "../model/Character";
-import { MonsterData } from "../model/data/MonsterData";
-import { ScenarioObjectiveIdentifier } from "../model/data/ObjectiveData";
-import { RoomData } from "../model/data/RoomData";
-import { ScenarioData, ScenarioRewards } from "../model/data/ScenarioData";
 import { EntityValueFunction } from "../model/Entity";
 import { Game, GameState } from "../model/Game";
-import { CountIdentifier } from "src/app/game/model/data/Identifier";
-import { LootDeckConfig, LootType, fullLootDeck } from "../model/data/Loot";
 import { Monster } from "../model/Monster";
 import { MonsterEntity } from "../model/MonsterEntity";
+import { GameScenarioModel, Scenario, ScenarioMissingRequirements } from "../model/Scenario";
+import { Condition, ConditionName } from "../model/data/Condition";
+import { LootDeckConfig, LootType, fullLootDeck } from "../model/data/Loot";
+import { MonsterData } from "../model/data/MonsterData";
 import { MonsterType } from "../model/data/MonsterType";
-import { GameScenarioModel, Scenario } from "../model/Scenario";
+import { ScenarioObjectiveIdentifier } from "../model/data/ObjectiveData";
+import { MonsterStandeeData, RoomData } from "../model/data/RoomData";
+import { ScenarioData, ScenarioRewards } from "../model/data/ScenarioData";
 import { gameManager } from "./GameManager";
 import { settingsManager } from "./SettingsManager";
+import { PetIdentifier } from "../model/data/PetCard";
 
 export class ScenarioManager {
 
@@ -23,15 +25,15 @@ export class ScenarioManager {
   }
 
   createScenario(): Scenario {
-    return new Scenario(new ScenarioData(), [], true);
+    return new Scenario(new ScenarioData(), [], [], true);
   }
 
   getScenario(index: string, edition: string, group: string | undefined): ScenarioData | undefined {
-    return gameManager.scenarioData().find((scenarioData) => scenarioData.index == index && scenarioData.edition == edition && scenarioData.group == group);
+    return gameManager.scenarioData(edition).find((scenarioData) => scenarioData.index == index && scenarioData.edition == edition && scenarioData.group == group);
   }
 
   setScenario(scenario: Scenario | undefined) {
-    this.game.scenario = scenario ? new Scenario(scenario, scenario.revealedRooms, scenario.custom) : undefined;
+    this.game.scenario = scenario ? new Scenario(scenario, scenario.revealedRooms, scenario.additionalSections, scenario.custom) : undefined;
     if (scenario && !scenario.custom) {
       const scenarioData = gameManager.scenarioData().find((scenarioData) => scenarioData.index == scenario.index && scenarioData.edition == scenario.edition && scenarioData.group == scenario.group);
       if (!scenarioData) {
@@ -62,6 +64,17 @@ export class ScenarioManager {
           Object.assign(rewards, conclusionSection.rewards);
         }
       }
+
+      if (!internal && characterProgress && settingsManager.settings.scenarioStats) {
+        this.game.figures.forEach((figure) => {
+          if (figure instanceof Character && !figure.absent) {
+            figure.progress.scenarioStats = figure.progress.scenarioStats || [];
+            gameManager.scenarioStatsManager.applyScenarioStats(figure, scenario, success);
+            figure.progress.scenarioStats.push(figure.scenarioStats);
+          }
+        })
+      }
+
       if (!internal && characterProgress && settingsManager.settings.characterSheet) {
         this.game.figures.forEach((figure) => {
           if (figure instanceof Character && !figure.absent) {
@@ -123,6 +136,23 @@ export class ScenarioManager {
             })
           }
 
+          // always add achievements/stickers for scenario unlock
+          if (rewards.globalAchievements) {
+            this.game.party.globalAchievementsList.push(...rewards.globalAchievements);
+          }
+
+          if (rewards.partyAchievements) {
+            this.game.party.achievementsList.push(...rewards.partyAchievements);
+          }
+
+          if (rewards.lostPartyAchievements) {
+            this.game.party.achievementsList = this.game.party.achievementsList.filter((achievement) => rewards && rewards.lostPartyAchievements.indexOf(achievement) == -1);
+          }
+
+          if (rewards.campaignSticker) {
+            this.game.party.campaignStickers.push(...rewards.campaignSticker.map((sticker) => sticker.toLowerCase().replaceAll(' ', '-')));
+          }
+
           if (settingsManager.settings.partySheet) {
 
             if (rewards.reputation) {
@@ -160,31 +190,6 @@ export class ScenarioManager {
               }
             }
 
-            if (rewards.reputation) {
-              this.game.party.reputation += rewards.reputation;
-              if (this.game.party.reputation > 20) {
-                this.game.party.reputation = 20;
-              } else if (this.game.party.reputation < -20) {
-                this.game.party.reputation = -20;
-              }
-            }
-
-            if (rewards.globalAchievements) {
-              this.game.party.globalAchievementsList.push(...rewards.globalAchievements);
-            }
-
-            if (rewards.partyAchievements) {
-              this.game.party.achievementsList.push(...rewards.partyAchievements);
-            }
-
-            if (rewards.lostPartyAchievements) {
-              this.game.party.achievementsList = this.game.party.achievementsList.filter((achievement) => rewards && rewards.lostPartyAchievements.indexOf(achievement) == -1);
-            }
-
-            if (rewards.campaignSticker) {
-              this.game.party.campaignStickers.push(...rewards.campaignSticker.map((sticker) => sticker.toLowerCase().replaceAll(' ', '-')));
-            }
-
             if (rewards.itemDesigns) {
               rewards.itemDesigns.forEach((item) => {
                 if (item.indexOf('-') != -1) {
@@ -201,7 +206,7 @@ export class ScenarioManager {
                   if (item.indexOf(':') != -1) {
                     itemEdition = item.split(':')[1];
                   }
-                  const itemData = gameManager.itemManager.getItem(+(item.split(':')[0]), itemEdition, true);
+                  const itemData = gameManager.itemManager.getItem((item.split(':')[0]), itemEdition, true);
                   if (itemData && (!itemData.unlockScenario || itemData.unlockScenario.edition != scenario.edition || itemData.unlockScenario.name != scenario.index)) {
                     this.game.party.unlockedItems.push(new CountIdentifier(itemData.id + '', itemData.edition));
                   }
@@ -249,6 +254,12 @@ export class ScenarioManager {
                 }
               })
             }
+
+            if (rewards.pet) {
+              if (gameManager.game.party.pets.find((value) => value.edition == scenario.edition && value.name == rewards.pet) == undefined) {
+                gameManager.game.party.pets.push(new PetIdentifier(rewards.pet, scenario.edition));
+              }
+            }
           }
 
           if (settingsManager.settings.automaticUnlocking && rewards.unlockCharacter && this.game.unlockedCharacters.indexOf(rewards.unlockCharacter) == -1) {
@@ -266,7 +277,8 @@ export class ScenarioManager {
           }
         }
 
-        if (gameManager.characterManager.characterCount() < 4 && !internal && !scenario.solo && gainRewards) {
+        if (gameManager.characterManager.characterCount() < 4 && !internal && !scenario.solo && gainRewards && (
+          (!rewards || !rewards.ignoredBonus || rewards.ignoredBonus.indexOf('inspiration') == -1))) {
           this.game.party.inspiration += 4 - gameManager.characterManager.characterCount();
         }
 
@@ -279,7 +291,7 @@ export class ScenarioManager {
             if (!this.game.party.conclusions.find((conclusion) => conclusion.index == scenario.index && conclusion.edition == scenario.edition && conclusion.group == scenario.group)) {
               this.game.party.conclusions.push(new GameScenarioModel(scenario.index, scenario.edition, scenario.group));
             }
-          } else {
+          } else if (!scenario.hideIndex) {
             this.game.party.scenarios.push(new GameScenarioModel(scenario.index, scenario.edition, scenario.group, scenario.custom, scenario.custom ? scenario.name : "", scenario.revealedRooms));
           }
 
@@ -295,11 +307,11 @@ export class ScenarioManager {
       if (restart) {
         gameManager.scenarioManager.setScenario(scenario);
       } else {
-        if (scenario && !scenario.conclusion && gameManager.fhRules() && !linkedScenario && settingsManager.settings.partySheet && !internal && gainRewards) {
+        if (scenario && !scenario.conclusion && (!rewards || !rewards.calendarIgnore) && gameManager.fhRules() && !linkedScenario && settingsManager.settings.automaticPassTime && !scenario.solo && settingsManager.settings.partySheet && !internal && gainRewards) {
 
-          if (settingsManager.settings.automaticPassTime && !scenario.solo) {
-            this.game.party.weeks++;
-          }
+          this.game.party.weeks++;
+
+          gameManager.buildingsManager.nextWeek();
 
           const editionData = gameManager.editionData.find((editionData) => editionData.edition == scenario.edition);
           let weekSections: string[] = [];
@@ -316,9 +328,10 @@ export class ScenarioManager {
               this.finishScenario(conclusion, true, conclusion, false, undefined, false, gainRewards, true);
             }
           })
+
         }
 
-        if (success && (!gameManager.game.party.campaignMode || !gainRewards && !conclusionSection)) {
+        if (success && !scenario.hideIndex && (!gameManager.game.party.campaignMode || !gainRewards && !conclusionSection)) {
           this.game.party.casualScenarios.push(new GameScenarioModel(scenario.index, scenario.edition, scenario.group, scenario.custom, scenario.custom ? scenario.name : "", scenario.revealedRooms));
         }
 
@@ -378,7 +391,8 @@ export class ScenarioManager {
       if (scenarioData.objectives) {
         scenarioData.objectives.forEach((objectiveData, index) => {
           const objectiveIdentifier: ScenarioObjectiveIdentifier = { "edition": scenarioData.edition, "scenario": scenarioData.index, "group": scenarioData.group, "section": section, "index": index };
-          gameManager.objectiveManager.addObjective(objectiveData, undefined, objectiveIdentifier);
+          const objectiveContainer = gameManager.objectiveManager.addObjective(objectiveData, undefined, objectiveIdentifier);
+          gameManager.objectiveManager.addObjectiveEntity(objectiveContainer);
         })
       }
     } else {
@@ -404,7 +418,7 @@ export class ScenarioManager {
 
           const isSpawn = settingsManager.settings.interactiveAbilities && spawns.find((monsterData) => monsterData.name == monsterName);
 
-          const isRule = settingsManager.settings.scenarioRules && this.getRuleMonster(scenarioData).find((monsterData) => monsterData.name == monsterName);
+          const isRule = settingsManager.settings.scenarioRules && this.getRuleMonster(new Scenario(scenarioData)).find((monsterData) => monsterData.name == monsterName);
 
           if (!isRoom && !isSpawn && !isRule) {
             let monster = gameManager.monsterManager.addMonsterByName(name, scenarioData.edition);
@@ -419,7 +433,7 @@ export class ScenarioManager {
     }
 
     if (settingsManager.settings.addAllMonsters) {
-      this.getMonsters(scenarioData).forEach((monster) => {
+      this.getMonsters(new Scenario(scenarioData)).forEach((monster) => {
         if (!this.game.figures.find((figure) =>
           figure instanceof MonsterData && figure.name == monster.name && figure.edition == monster.edition)) {
           gameManager.monsterManager.addMonster(monster, this.game.level);
@@ -465,6 +479,14 @@ export class ScenarioManager {
       }
       this.game.round = (this.game.state == GameState.draw ? 0 : 1) + offset;
     }
+
+    if (gameManager.bbRules() && scenarioData.level) {
+      gameManager.game.figures.forEach((figure) => {
+        if (figure instanceof Character && scenarioData.level) {
+          gameManager.characterManager.setLevel(figure, scenarioData.level);
+        }
+      })
+    }
   }
 
   openRoom(roomData: RoomData, scenarioData: ScenarioData, section: boolean) {
@@ -475,6 +497,7 @@ export class ScenarioManager {
 
     if (roomData.monster) {
       let entities: MonsterEntity[] = [];
+      // boss / elite first
       roomData.monster.forEach((monsterStandeeData) => {
         let type: MonsterType | undefined = monsterStandeeData.type;
 
@@ -489,32 +512,36 @@ export class ScenarioManager {
           }
         }
 
-        if (type) {
-          const monsterName = monsterStandeeData.name.split(':')[0];
-          const isAlly = scenarioData.allies && scenarioData.allies.indexOf(monsterName) != -1 || section && gameManager.game.scenario && gameManager.game.scenario.allies && gameManager.game.scenario.allies.indexOf(monsterName) != -1 || false;
-          const isAllied = scenarioData.allied && scenarioData.allied.indexOf(monsterName) != -1 || section && gameManager.game.scenario && gameManager.game.scenario.allied && gameManager.game.scenario.allied.indexOf(monsterName) != -1 || false;
-          const drawExtra = scenarioData.drawExtra && scenarioData.drawExtra.indexOf(monsterName) != -1 || section && gameManager.game.scenario && gameManager.game.scenario.drawExtra && gameManager.game.scenario.drawExtra.indexOf(monsterName) != -1 || false;
-          const monster = gameManager.monsterManager.addMonsterByName(monsterStandeeData.name, scenarioData.edition);
-          if (monster) {
-            if (settingsManager.settings.standees || !monster.entities.find((entity) => entity.type == type)) {
-              const entity = gameManager.monsterManager.spawnMonsterEntity(monster, type, isAlly, isAllied, drawExtra);
-              if (entity) {
-                if (monsterStandeeData.marker) {
-                  entity.marker = monsterStandeeData.marker;
-                }
-                if (monsterStandeeData.tags) {
-                  entity.tags = monsterStandeeData.tags;
-                }
-                if (monsterStandeeData.health) {
-                  entity.health = EntityValueFunction(monsterStandeeData.health)
-                }
-                entities.push(entity);
-                if (entity.marker || entity.tags.length > 0) {
-                  gameManager.addEntityCount(monster, entity);
-                }
-              }
-            }
+        if (!type && !monsterStandeeData.player2 && !monsterStandeeData.player3 && !monsterStandeeData.player4) {
+          type = MonsterType.normal;
+        }
+
+        if (type == MonsterType.boss || type == MonsterType.elite) {
+          entities.push(...this.applyRoomSpawn(scenarioData, monsterStandeeData, type, section));
+        }
+      })
+
+      // normal
+      roomData.monster.forEach((monsterStandeeData) => {
+        let type: MonsterType | undefined = monsterStandeeData.type;
+
+        if (!type) {
+          const charCount = gameManager.characterManager.characterCount();
+          if (charCount < 3) {
+            type = monsterStandeeData.player2;
+          } else if (charCount == 3) {
+            type = monsterStandeeData.player3;
+          } else {
+            type = monsterStandeeData.player4;
           }
+        }
+
+        if (!type && !monsterStandeeData.player2 && !monsterStandeeData.player3 && !monsterStandeeData.player4) {
+          type = MonsterType.normal;
+        }
+
+        if (type == MonsterType.normal) {
+          entities.push(...this.applyRoomSpawn(scenarioData, monsterStandeeData, type, section));
         }
       })
 
@@ -531,15 +558,28 @@ export class ScenarioManager {
           }
         })
       }
+
+      if (this.game.figures.find((figure) => figure instanceof Character && figure.name == 'snowflake' && figure.tags.indexOf('muddle-monster') != -1)) {
+        this.game.figures.forEach((figure) => {
+          if (figure instanceof Monster) {
+            figure.entities.forEach((entity) => {
+              if (entities.indexOf(entity) != -1 && !gameManager.entityManager.isImmune(entity, figure, ConditionName.muddle)) {
+                gameManager.entityManager.addCondition(entity, figure, new Condition(ConditionName.muddle));
+              }
+            })
+          }
+        })
+      }
     }
 
     if (roomData.objectives) {
       roomData.objectives.forEach((index) => {
         if (typeof index == 'number' && index > 0) {
           const objectiveIdentifier: ScenarioObjectiveIdentifier = { "edition": scenarioData.edition, "scenario": scenarioData.index, "group": scenarioData.group, "section": section, "index": index - 1 };
-          const objective = gameManager.objectiveDataByScenarioObjectiveIdentifier(objectiveIdentifier);
+          const objective = gameManager.objectiveManager.objectiveDataByObjectiveIdentifier(objectiveIdentifier);
           if (objective) {
-            gameManager.objectiveManager.addObjective(objective, undefined, objectiveIdentifier);
+            const objectiveContainer = gameManager.objectiveManager.addObjective(objective, undefined, objectiveIdentifier);
+            gameManager.objectiveManager.addObjectiveEntity(objectiveContainer);
           }
         } else if (typeof index == 'string' && index.indexOf(':') != -1) {
           let split = index.split(':');
@@ -547,10 +587,10 @@ export class ScenarioManager {
           const count = EntityValueFunction(split.join(':'));
           if (id > 0 && count > 0) {
             const objectiveIdentifier: ScenarioObjectiveIdentifier = { "edition": scenarioData.edition, "scenario": scenarioData.index, "group": scenarioData.group, "section": section, "index": id - 1 };
-            const objective = gameManager.objectiveDataByScenarioObjectiveIdentifier(objectiveIdentifier);
+            const objective = gameManager.objectiveManager.objectiveDataByObjectiveIdentifier(objectiveIdentifier);
             if (objective) {
               const objectiveContainer = gameManager.objectiveManager.addObjective(objective, undefined, objectiveIdentifier);
-              for (let i = 0; i < count - 1; i++) {
+              for (let i = 0; i < count; i++) {
                 gameManager.objectiveManager.addObjectiveEntity(objectiveContainer);
               }
             }
@@ -558,6 +598,47 @@ export class ScenarioManager {
         }
       })
     }
+  }
+
+  applyRoomSpawn(scenarioData: ScenarioData, monsterStandeeData: MonsterStandeeData, type: MonsterType, section: boolean): MonsterEntity[] {
+    let entities: MonsterEntity[] = [];
+    const monsterName = monsterStandeeData.name.split(':')[0];
+    const isAlly = scenarioData.allies && scenarioData.allies.indexOf(monsterName) != -1 || section && gameManager.game.scenario && gameManager.game.scenario.allies && gameManager.game.scenario.allies.indexOf(monsterName) != -1 || false;
+    const isAllied = scenarioData.allied && scenarioData.allied.indexOf(monsterName) != -1 || section && gameManager.game.scenario && gameManager.game.scenario.allied && gameManager.game.scenario.allied.indexOf(monsterName) != -1 || false;
+    const drawExtra = scenarioData.drawExtra && scenarioData.drawExtra.indexOf(monsterName) != -1 || section && gameManager.game.scenario && gameManager.game.scenario.drawExtra && gameManager.game.scenario.drawExtra.indexOf(monsterName) != -1 || false;
+    const monster = gameManager.monsterManager.addMonsterByName(monsterStandeeData.name, scenarioData.edition);
+    if (monster) {
+      if (settingsManager.settings.standees || !monster.entities.find((entity) => entity.type == type)) {
+        const entity = gameManager.monsterManager.spawnMonsterEntity(monster, type, isAlly, isAllied, drawExtra);
+        if (entity) {
+          if (monsterStandeeData.marker) {
+            entity.marker = monsterStandeeData.marker;
+          }
+          if (monsterStandeeData.tags) {
+            entity.tags = monsterStandeeData.tags;
+          }
+          if (monsterStandeeData.health) {
+            entity.health = EntityValueFunction(monsterStandeeData.health)
+          }
+          if (monsterStandeeData.number) {
+            entity.number = monsterStandeeData.number;
+          }
+          entities.push(entity);
+          if (entity.marker || entity.tags.length > 0) {
+            gameManager.addEntityCount(monster, entity);
+          }
+        }
+      }
+    }
+    if (monster && monster.bb) {
+      if (entities.length && entities.every((entity) => entity.type == MonsterType.elite) && monster.tags.indexOf('bb-elite') == -1) {
+        monster.tags.push('bb-elite');
+      } else {
+        monster.tags = monster.tags.filter((tag) => tag != 'bb-elite');
+      }
+    }
+
+    return entities;
   }
 
   scenarioData(edition: string | undefined, all: boolean = false): ScenarioData[] {
@@ -577,7 +658,7 @@ export class ScenarioManager {
         return false;
       }
 
-      if (this.game.party.scenarios.find((identifier) => scenarioData.index == identifier.index && scenarioData.edition == identifier.edition && scenarioData.group == identifier.group)) {
+      if (this.isSuccess(scenarioData)) {
         return true;
       }
 
@@ -624,10 +705,18 @@ export class ScenarioManager {
     });
   }
 
+  isCurrent(scenarioData: ScenarioData): boolean {
+    return gameManager.game.scenario != undefined && gameManager.game.scenario.edition == scenarioData.edition && gameManager.game.scenario.index == scenarioData.index && gameManager.game.scenario.group == scenarioData.group && gameManager.game.scenario.solo == scenarioData.solo;
+  }
+
+  isSuccess(scenarioData: ScenarioData): boolean {
+    return gameManager.game.party.scenarios && gameManager.game.party.scenarios.find((scenarioModel) => scenarioModel.edition == scenarioData.edition && scenarioModel.group == scenarioData.group && scenarioModel.index == scenarioData.index) != undefined
+  }
+
   isBlocked(scenarioData: ScenarioData): boolean {
     let blocked = false;
 
-    let finishedScenarios = gameManager.scenarioData().filter((other) => (scenarioData.edition == other.edition || gameManager.editionExtensions(scenarioData.edition).indexOf(other.edition) != -1) && other.group == scenarioData.group && other.blocks && other.blocks.indexOf(scenarioData.index) != -1 && this.game.party.scenarios.find((finishedScenario) => finishedScenario.edition == other.edition && finishedScenario.group == other.group && finishedScenario.index == other.index));
+    let finishedScenarios = gameManager.scenarioData().filter((other) => (scenarioData.edition == other.edition || gameManager.editionExtensions(scenarioData.edition).indexOf(other.edition) != -1) && other.group == scenarioData.group && other.blocks && other.blocks.indexOf(scenarioData.index) != -1 && this.isSuccess(other));
 
     if (finishedScenarios.length > 1) {
       finishedScenarios.filter((model) => model.group == scenarioData.group);
@@ -702,8 +791,138 @@ export class ScenarioManager {
           } else {
             return !this.game.party.buildings.find((buildingModel) => buildingModel.name.toLowerCase().trim() == achievement.toLowerCase().trim() && buildingModel.level > 0)
           }
+        }) || requirement.characters && requirement.characters.some((character) => {
+          if (character.startsWith('!')) {
+            return gameManager.game.figures.find((figure) => figure instanceof Character && figure.name.toLowerCase().trim() == character.substring(1, character.length).toLowerCase().trim());
+          } else {
+            return !gameManager.game.figures.find((figure) => figure instanceof Character && figure.name.toLowerCase().trim() == character.toLowerCase().trim());
+          }
         })) ||
-      scenarioData.solo && !this.game.figures.find((figure) => figure instanceof Character && figure.name == scenarioData.solo && figure.level >= 5) || false;
+      scenarioData.solo && !this.game.figures.find((figure) => figure instanceof Character && figure.name == scenarioData.solo && (gameManager.bbRules() || figure.level >= 5)) || false;
+  }
+
+  getRequirements(scenarioData: ScenarioData, all: boolean = false): ScenarioMissingRequirements[] {
+    let missingRequirements: ScenarioMissingRequirements[] = [];
+    if (scenarioData.requirements) {
+      scenarioData.requirements.forEach((requirement) => {
+        let add: boolean = false;
+        let missingRequirement = new ScenarioMissingRequirements();
+        if (requirement.global) {
+          requirement.global.forEach((achievement) => {
+            if (achievement.startsWith('!')) {
+              if (all || gameManager.game.party.globalAchievementsList.find((globalAchievement) => globalAchievement.toLowerCase().trim() == achievement.substring(1, achievement.length).toLowerCase().trim())) {
+                missingRequirement.globalAchievementsMissing.push(achievement.substring(1, achievement.length));
+                add = true;
+              }
+            } else if (achievement.indexOf(':') != -1 && (!isNaN(+achievement.split(':')[1]))) {
+              let count = +achievement.split(':')[1];
+              gameManager.game.party.globalAchievementsList.forEach((partyAchievement) => {
+                if (partyAchievement.toLowerCase().trim() == achievement.split(':')[0].toLowerCase().trim()) {
+                  count--;
+                }
+              })
+              if (all || count > 0) {
+                missingRequirement.globalAchievementsCount.push({ name: achievement.split(':')[0], count: count, required: +achievement.split(':')[1] });
+                add = true;
+              }
+            } else if (all || !gameManager.game.party.globalAchievementsList.find((globalAchievement) => globalAchievement.toLowerCase().trim() == achievement.toLowerCase().trim())) {
+              missingRequirement.globalAchievements.push(achievement);
+              add = true;
+            }
+          })
+        }
+
+        if (requirement.party) {
+          requirement.party.forEach((achievement) => {
+            if (achievement.startsWith('!')) {
+              if (all || gameManager.game.party.achievementsList.find((partyAchievement) => partyAchievement.toLowerCase().trim() == achievement.substring(1, achievement.length).toLowerCase().trim())) {
+                missingRequirement.partyAchievementsMissing.push(achievement.substring(1, achievement.length));
+                add = true;
+              }
+            } else if (achievement.indexOf(':') != -1 && (!isNaN(+achievement.split(':')[1]))) {
+              let count = +achievement.split(':')[1];
+              gameManager.game.party.achievementsList.forEach((partyAchievement) => {
+                if (partyAchievement.toLowerCase().trim() == achievement.split(':')[0].toLowerCase().trim()) {
+                  count--;
+                }
+              })
+              if (count > 0) {
+                missingRequirement.partyAchievementsCount.push({ name: achievement.split(':')[0], count: count, required: +achievement.split(':')[1] });
+                add = true;
+              }
+            } else if (all || !gameManager.game.party.achievementsList.find((partyAchievement) => partyAchievement.toLowerCase().trim() == achievement.toLowerCase().trim())) {
+              missingRequirement.partyAchievements.push(achievement);
+              add = true;
+            }
+          })
+        }
+
+        if (requirement.campaignSticker) {
+          requirement.campaignSticker.forEach((achievement) => {
+            if (achievement.startsWith('!')) {
+              if (all || gameManager.game.party.campaignStickers.find((campaignSticker) => campaignSticker.toLowerCase().trim() == achievement.substring(1, achievement.length).toLowerCase().trim())) {
+                missingRequirement.campaignStickersMissing.push(achievement.substring(1, achievement.length));
+                add = true;
+              }
+            } else if (achievement.indexOf(':') != -1 && (!isNaN(+achievement.split(':')[1]))) {
+              let count = +achievement.split(':')[1];
+              gameManager.game.party.campaignStickers.forEach((campaignSticker) => {
+                if (campaignSticker.toLowerCase().trim() == achievement.split(':')[0].toLowerCase().trim()) {
+                  count--;
+                }
+              })
+              if (count > 0) {
+                missingRequirement.campaignStickersCount.push({ name: achievement.split(':')[0], count: count, required: +achievement.split(':')[1] });
+                add = true;
+              }
+            } else if (all || !gameManager.game.party.campaignStickers.find((campaignSticker) => campaignSticker.toLowerCase().trim() == achievement.toLowerCase().trim())) {
+              missingRequirement.campaignStickers.push(achievement);
+              add = true;
+            }
+          })
+        }
+
+        if (requirement.buildings) {
+          requirement.buildings.forEach((achievement) => {
+            if (achievement.startsWith('!')) {
+              if (all || gameManager.game.party.buildings.find((buildingModel) => buildingModel.name.toLowerCase().trim() == achievement.substring(1, achievement.length).toLowerCase().trim() && buildingModel.level > 0)) {
+                missingRequirement.buildingsMissing.push(achievement.substring(1, achievement.length));
+                add = true;
+              }
+            } else if (achievement.indexOf(':') != -1) {
+              let level = +achievement.split(':')[1];
+              if (all || !gameManager.game.party.buildings.find((buildingModel) => buildingModel.name.toLowerCase().trim() == achievement.split(':')[0].toLowerCase().trim() && buildingModel.level >= level)) {
+                missingRequirement.buildingsLevel.push({ name: achievement.split(':')[0], level: level });
+                add = true;
+              }
+            } else if (all || !gameManager.game.party.buildings.find((buildingModel) => buildingModel.name.toLowerCase().trim() == achievement.toLowerCase().trim() && buildingModel.level > 0)) {
+              missingRequirement.buildings.push(achievement);
+              add = true;
+            }
+          })
+        }
+
+        if (requirement.characters) {
+          requirement.characters.forEach((character) => {
+            if (character.startsWith('!')) {
+              if (all || gameManager.game.figures.find((figure) => figure instanceof Character && figure.name.toLowerCase().trim() == character.substring(1, character.length).toLowerCase().trim())) {
+                missingRequirement.charactersMissing.push(character.substring(1, character.length));
+                add = true;
+              }
+            } else if (all || !gameManager.game.figures.find((figure) => figure instanceof Character && figure.name.toLowerCase().trim() == character.toLowerCase().trim())) {
+              missingRequirement.characters.push(character);
+              add = true;
+            }
+          })
+        }
+
+        if (add) {
+          missingRequirements.push(missingRequirement);
+        }
+      });
+    }
+
+    return missingRequirements;
   }
 
   getSections(scenario: ScenarioData): ScenarioData[] {
@@ -715,7 +934,7 @@ export class ScenarioManager {
       return [];
     }
 
-    return this.getSections(this.game.scenario).filter((sectionData) =>
+    const sections = this.getSections(this.game.scenario).filter((sectionData) =>
       // filter conclusion
       (!sectionData.conclusion || includeConclusions)
       // filter already active
@@ -724,27 +943,47 @@ export class ScenarioManager {
       && (!sectionData.parentSections || sectionData.parentSections.some((parentSections) => parentSections.every((parentSection) => this.game.sections.find((active) => active.index == parentSection))))
       // filter blocked
       && !this.game.sections.find((active) => active.edition == sectionData.edition && sectionData.blockedSections && sectionData.blockedSections.indexOf(active.index) != -1)).sort(this.sortScenarios);
+
+    const additionalSections = this.game.scenario.additionalSections.map((index) => this.game.scenario && gameManager.sectionData(this.game.scenario.edition, true).find((sectionData) => sectionData.group == 'randomMonsterCard' && sectionData.index == index)).filter((sectionData) => sectionData && !this.game.sections.find((active) => active.edition == sectionData.edition && active.index == sectionData.index)).map((sectionData) => sectionData as ScenarioData);
+
+    return [...additionalSections, ...sections];
   }
 
-  getTreasures(scenario: Scenario, sections: Scenario[], unlooted: boolean = false): ('G' | number)[] {
+  getTreasures(scenario: Scenario, sections: Scenario[], unlooted: boolean = false, all: boolean = false): ('G' | number)[] {
     let treasures: ('G' | number)[] = [];
-    if (scenario.rooms && scenario.revealedRooms) {
-      scenario.revealedRooms.forEach((roomNumber) => {
-        const room = scenario.rooms.find((room) => room.roomNumber == roomNumber);
-        if (room && room.treasures) {
-          treasures.push(...room.treasures);
-        }
-      })
-    }
-
-    sections.forEach((section) => {
-      if (section.rooms && section.revealedRooms) {
-        section.revealedRooms.forEach((roomNumber) => {
-          const room = section.rooms.find((room) => room.roomNumber == roomNumber)
+    if (scenario.rooms) {
+      if (all) {
+        scenario.rooms.forEach((room) => {
+          if (room.treasures) {
+            treasures.push(...room.treasures);
+          }
+        })
+      } else if (scenario.revealedRooms) {
+        scenario.revealedRooms.forEach((roomNumber) => {
+          const room = scenario.rooms.find((room) => room.roomNumber == roomNumber);
           if (room && room.treasures) {
             treasures.push(...room.treasures);
           }
         })
+      }
+    }
+
+    sections.forEach((section) => {
+      if (section.rooms) {
+        if (all) {
+          section.rooms.forEach((room) => {
+            if (room.treasures) {
+              treasures.push(...room.treasures);
+            }
+          })
+        } else if (section.revealedRooms) {
+          section.revealedRooms.forEach((roomNumber) => {
+            const room = section.rooms.find((room) => room.roomNumber == roomNumber)
+            if (room && room.treasures) {
+              treasures.push(...room.treasures);
+            }
+          })
+        }
       }
     })
 
@@ -781,24 +1020,36 @@ export class ScenarioManager {
     return treasures;
   }
 
-  getMonsters(scenarioData: ScenarioData, custom: boolean = false): MonsterData[] {
+  treasureRewardsFromString(treasure: string): string[][] {
+    if (treasure.split(':').length < 2) {
+      return [];
+    } else {
+      return treasure.split(':').slice(1).join(':').split('|').map((value) => value.split('+'));
+    }
+  }
+
+  getMonsters(scenario: Scenario, custom: boolean = false): MonsterData[] {
     let monsters: MonsterData[] = [];
     if (custom) {
       monsters.push(...gameManager.game.figures.filter((figure) => figure instanceof Monster).map((figure) => new MonsterData(figure as Monster)));
     } else {
-      monsters.push(...this.getScenarioMonster(scenarioData, true));
-      monsters.push(...this.getRuleMonster(scenarioData, true));
+      monsters.push(...this.getScenarioMonster(scenario, true));
+      monsters.push(...this.getRuleMonster(scenario, true));
     }
     monsters.push(...gameManager.monsterManager.getSpawnMonsters(monsters));
     return monsters;
   }
 
-  getScenarioMonster(scenarioData: ScenarioData, sections: boolean = false): MonsterData[] {
+  getScenarioMonster(scenario: Scenario, sections: boolean = false): MonsterData[] {
     let data: ScenarioData[] = [];
 
-    data.push(scenarioData);
+    data.push(scenario);
     if (sections) {
-      data.push(...gameManager.sectionData(scenarioData.edition).filter((sectionData) => sectionData.group == scenarioData.group && sectionData.parent == scenarioData.index));
+      data.push(...gameManager.sectionData(scenario.edition).filter((sectionData) => sectionData.group == scenario.group && sectionData.parent == scenario.index));
+
+      if (scenario.additionalSections) {
+        data.push(...gameManager.sectionData(scenario.edition, true).filter((sectionData) => scenario.additionalSections.indexOf(sectionData.index) != -1));
+      }
     }
 
     let monsters: MonsterData[] = [];
@@ -816,12 +1067,16 @@ export class ScenarioManager {
     return monsters;
   }
 
-  getRuleMonster(scenarioData: ScenarioData, sections: boolean = false): MonsterData[] {
+  getRuleMonster(scenario: Scenario, sections: boolean = false): MonsterData[] {
     let data: ScenarioData[] = [];
 
-    data.push(scenarioData);
+    data.push(scenario);
     if (sections) {
-      data.push(...gameManager.sectionData(scenarioData.edition).filter((sectionData) => sectionData.group == scenarioData.group && sectionData.parent == scenarioData.index));
+      data.push(...gameManager.sectionData(scenario.edition).filter((sectionData) => sectionData.group == scenario.group && sectionData.parent == scenario.index));
+
+      if (scenario.additionalSections) {
+        data.push(...gameManager.sectionData(scenario.edition, true).filter((sectionData) => scenario.additionalSections.indexOf(sectionData.index) != -1));
+      }
     }
 
     let monsters: MonsterData[] = [];
@@ -879,7 +1134,7 @@ export class ScenarioManager {
   }
 
   drawRandomScenario(edition: string): ScenarioData | undefined {
-    let availableScenarios = gameManager.scenarioData(edition).filter((scenarioData) => scenarioData.random && !gameManager.game.party.manualScenarios.find((scenarioModel) => scenarioModel.index == scenarioData.index && scenarioModel.edition == scenarioData.edition && scenarioModel.group == scenarioData.group && !scenarioModel.custom) && !gameManager.game.party.scenarios.find((scenarioModel) => scenarioModel.index == scenarioData.index && scenarioModel.edition == scenarioData.edition && scenarioModel.group == scenarioData.group && !scenarioModel.custom));
+    let availableScenarios = gameManager.scenarioData(edition).filter((scenarioData) => scenarioData.random && !gameManager.game.party.manualScenarios.find((scenarioModel) => scenarioModel.index == scenarioData.index && scenarioModel.edition == scenarioData.edition && scenarioModel.group == scenarioData.group && !scenarioModel.custom) && !this.isSuccess(scenarioData));
     let scenarioData: ScenarioData | undefined = undefined;
     if (availableScenarios.length > 0) {
       scenarioData = availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
@@ -931,7 +1186,7 @@ export class ScenarioManager {
     return JSON.parse(JSON.stringify(sectionData));
   }
 
-  toModel(scenarioData: ScenarioData, revealedRooms: number[], custom: boolean = false, customName: string = ""): GameScenarioModel {
-    return new GameScenarioModel(scenarioData.index, scenarioData.edition, scenarioData.group, custom, customName, JSON.parse(JSON.stringify(revealedRooms)));
+  toModel(scenarioData: ScenarioData, revealedRooms: number[], additionalSections: string[], custom: boolean = false, customName: string = ""): GameScenarioModel {
+    return new GameScenarioModel(scenarioData.index, scenarioData.edition, scenarioData.group, custom, customName, JSON.parse(JSON.stringify(revealedRooms)), JSON.parse(JSON.stringify(additionalSections)));
   }
 }

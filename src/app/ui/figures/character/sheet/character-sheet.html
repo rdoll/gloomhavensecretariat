@@ -1,19 +1,20 @@
-<div class="light character-sheet"
+<div class="light character-sheet" [style.--ghs-character-color]="character.color"
   [ngClass]="{'cs-sheet' : csSheet, 'fh-sheet' : fhSheet, 'compact': settingsManager.settings.characterSheetCompact}">
   <div class="container"
-    [ngClass]="{'denied' : !editable || !gameManager.stateManager.characterPermissions[character.name + '|' + character.edition], 'view-only' : !editable}">
+    [ngClass]="{'denied' : !forceEdit && (!editable || !gameManager.stateManager.characterPermissions[character.name + '|' + character.edition]) || settingsManager.settings.characterSheetLocked, 'view-only' : !forceEdit && !editable || settingsManager.settings.characterSheetLocked}">
     <div class="columns">
       <div class="column column-left">
         <div class="row title">
           <img [src]="character.iconUrl" />
-          <label class="headline" [ngClass]="{'absent' : character.absent}" (click)="toggleCharacterAbsent()"
-            [ghs-label]="(character.absent ? 'character.absent' : 'character.present')" [ghs-label-attribute]="'title'">
+          <label class="headline" [ghs-label]="(character.absent ? 'character.absent' : 'character.present')"
+            [ghs-label-attribute]="'title'">
             <div class="character-title">
               <span [ghs-label]="'character.progress.title'" [ghs-label-args]="['data.character.' + character.name,
                 character.characterClass ? 'character.class.' + (character.gender ? character.gender + '.' : '') +
                 character.characterClass : '']"></span>
             </div>
-            <img class="absent" [src]="'./assets/images/status/' + (character.absent ? 'absent': 'present') + '.svg'"
+            <img (click)="toggleCharacterAbsent()" class="absent"
+              [src]="'./assets/images/status/' + (character.absent ? 'absent': 'present') + '.svg'"
               [ghs-label]="(character.absent ? 'character.present' : 'character.absent')"
               [ghs-label-attribute]="'title'">
           </label>
@@ -70,7 +71,7 @@
             <input [value]="character.progress.gold" type="number" min="0" (change)="setGold($event)">
             <span class="donations" *ngIf="donations">
               <span [ghs-label]="'character.progress.donations'"
-                [ghs-label-args]="['' + character.progress.donations]"></span>
+                [ghs-label-args]="[character.progress.donations]"></span>
             </span>
             <span class="donate" *ngIf="donations">
               <span [ghs-label]="'character.progress.donate'"></span>:
@@ -166,7 +167,7 @@
           <div class="masteries-list">
             <div class="mastery" *ngFor="let mastery of character.masteries; let i = index">
               <span class="checkmark">
-                <img src="./assets/images/check.svg">:</span>
+                <img src="./assets/images/close.svg">:</span>
               <span class="mastery-check checkbox"
                 [ngClass]="{'checked' : character.progress.masteries.indexOf(i) != -1}"
                 (click)="toggleMastery(i)"></span>
@@ -181,15 +182,16 @@
         <div class="row perks">
           <label *ngIf="!fhSheet" class="headline"><span [ghs-label]="'game.attackModifiers.perks'"></span></label>
           <div class="list ignore-denied"
-            [ngClass]="{'denied' : !editable || !gameManager.stateManager.characterPermissions[character.name + '|' + character.edition], 'view-only' : !editable}">
+            [ngClass]="{'denied' : !editable || settingsManager.settings.characterSheetLocked || !gameManager.stateManager.characterPermissions[character.name + '|' + character.edition], 'view-only' : !editable|| settingsManager.settings.characterSheetLocked}">
             <div class="perk" *ngFor="let perk of character.perks; let i = index;">
               <div class="checkboxes" [ngClass]="{'combined' : perk.combined}">
                 <span class="checkbox" *ngFor="let count of []|ghsRange:perk.count"
-                  [ngClass]="{'checked' : character.progress.perks[i] && character.progress.perks[i] > count, 'disabled' : gameManager.game.state != GameState.draw || gameManager.game.round > 0 || character.progress.perks[i] <= count && availablePerks < count - character.progress.perks[i] + 1}"
+                  [ngClass]="{'checked' : character.progress.perks[i] && character.progress.perks[i] > count, 'disabled' : !forceEdit && (gameManager.game.state != GameState.draw || gameManager.game.round > 0) || character.progress.perks[i] <= count && availablePerks < count - character.progress.perks[i] + 1}"
                   ghs-pointer-input (singleClick)="addPerk(i, count+1)"
                   (doubleClick)="addPerk(i, count+1, true)"></span>
               </div>
-              <ghs-perk-label ghs-pointer-input (singleClick)="togglePerk(i)" (doubleClick)="togglePerk(i, true)" [ngClass]="{ 'disabled' : gameManager.game.state != GameState.draw || gameManager.game.round > 0 || availablePerks == 0 && !character.progress.perks[i]}"
+              <ghs-perk-label ghs-pointer-input (singleClick)="togglePerk(i)" (doubleClick)="togglePerk(i, true)"
+                [ngClass]="{ 'disabled' : gameManager.game.state != GameState.draw || gameManager.game.round > 0 || availablePerks == 0 && !character.progress.perks[i]}"
                 [perk]="perk"></ghs-perk-label>
             </div>
           </div>
@@ -198,7 +200,7 @@
             <img class="ghs-svg" src="./assets/images/warning.svg">
             <span [ghs-label]="'game.attackModifiers.perks.warning'"></span>
           </div>
-          <div *ngIf="perksWip" class="wip" [ghs-label]="'wip'" [ghs-label-attribute]="'title'">
+          <div *ngIf="character.perkWarning" class="wip" [ghs-label]="'wip'" [ghs-label-attribute]="'title'">
             <img class="ghs-svg" src="./assets/images/warning.svg"> <span
               [ghs-label]="'game.attackModifiers.perks.wip'"></span>
           </div>
@@ -233,34 +235,51 @@
 
 
           <ghs-character-items *ngIf="fhSheet" [character]="character"></ghs-character-items>
-
         </div>
-        <div class="column column-right">
+        <div class="column column-right notes">
           <div class="name">
             <span *ngIf="character.number== 0 || character.number > gameManager.game.party.players.length || !gameManager.game.party.players[character.number
                 - 1]">/</span>
             <span *ngIf="character.number > 0 && character.number <= gameManager.game.party.players.length && gameManager.game.party.players[character.number
                 - 1]">{{gameManager.game.party.players[character.number
               - 1]}}</span>
+
+            <span class="spacer"></span>
+            <a class="ignore-denied" (click)="statistics()" [ghs-tooltip]="'scenario.stats'"><img class="ghs-svg"
+                src="./assets/images/stats.svg"></a>
           </div>
           <div class="player-number">
             <label><span [ghs-label]="'character.playerNumber'"></span>:</label>
             <input [value]="character.number" type="number" min="1" (change)="setPlayerNumber($event)"
               (keyup)="setPlayerNumber($event)">
           </div>
-          <div class="personal-quest">
+          <div class="personal-quest" *ngIf="!gameManager.editionRules('jotl')">
             <label><span [ghs-label]="'character.progress.personalQuest'"></span>:</label>
             <div class="personal-quest-card">
               <input class="card-id" [value]="character.progress.personalQuest" type="text"
                 (change)="setPersonalQuest($event)">
 
-              <span *ngIf="!personalQuest" class="retired checkbox" [ngClass]="{'checked' : retired}"
-                (click)="toggleRetired()" [ghs-label]="'character.progress.retired'"
-                [ghs-label-attribute]="'title'"></span>
+              <label *ngIf="editable && !personalQuest" class="retire-button" ghs-pointer-input (singleClick)="retire()"
+                (doubleClick)="retire(true)" [ngClass]="{'disabled': !retireEnabled}">
+                <img class="ghs-svg" src="./assets/images/trophy.svg">
+                <span [ghs-label]="'character.progress.retirement'"></span>
+              </label>
+
               <span *ngIf="personalQuest" class="personal-quest-name">
                 <span [ghs-label]="'data.personalQuest.' + personalQuest.cardId"></span>
                 <span *ngIf="personalQuest.altId">&nbsp;({{personalQuest.altId}})</span>
               </span>
+            </div>
+
+            <div class="trial" *ngIf="gameManager.trialsManager.trialsEnabled">
+              <label><span [ghs-label]="'character.progress.trial'"></span>:</label>
+              <div class="trial-card">
+                <input #trialIndex class="card-id"
+                  [value]="character.progress.trial ? (settingsManager.settings.fhSecondEdition ? gameManager.trialsManager.cardIdSecondPrinting(+character.progress.trial.name) : character.progress.trial.name) : ''"
+                  type="text" (change)="setTrial($event)" (keyup)="trialIndex.classList.remove('error');">
+                <a class="open ignore-denied" *ngIf="fhSheet && character.progress.trial" (click)="openTrial()"><img
+                    src="./assets/images/fh/trials/trial.png"></a>
+              </div>
             </div>
 
             <div class="requirements" *ngIf="personalQuest">
@@ -292,13 +311,18 @@
                 [ghs-label-args]="[personalQuest.unlockCharacter]">
               </div>
               <div class="reward" *ngIf="personalQuest.openEnvelope"
-                [ghs-label]="'character.progress.personalQuest.openEnvelope'"
-                [ghs-label-args]="[personalQuest.openEnvelope]">
+                [ghs-label]="'character.progress.personalQuest.openEnvelope' + (personalQuest.openEnvelope.split(':').length > 1 ? '.alt' : '')"
+                [ghs-label-args]="personalQuest.openEnvelope.split(':')">
               </div>
             </div>
 
+            <label *ngIf="editable && personalQuest" class="retire-button" ghs-pointer-input (singleClick)="retire()"
+              (doubleClick)="retire(true)" [ngClass]="{'disabled': !retireEnabled}">
+              <img class="ghs-svg" src="./assets/images/trophy.svg">
+              <span [ghs-label]="'character.progress.retirement'"></span>
+            </label>
           </div>
-          <div class="retirements">
+          <div class="retirements" *ngIf="!gameManager.editionRules('jotl')">
             <label><span [ghs-label]="'character.progress.retirements'"></span>:</label>
             <input [value]="character.progress.retirements" type="number" min="0" (change)="setRetirements($event)"
               (keyup)="setRetirements($event)">
@@ -308,9 +332,14 @@
             <input [value]="character.progress.extraPerks" type="number" min="0" (change)="setExtraPerks($event)"
               (keyup)="setExtraPerks($event)">
           </div>
+          <div *ngIf="editable && settingsManager.settings.partySheet && !gameManager.game.scenario" class="set-aside">
+            <label (click)="setAside()">
+              <img src="./assets/images/long-rest.svg"><span [ghs-label]="'character.setAside'"></span>
+            </label>
+          </div>
           <hr class="compact-separator">
           <div class="import-export">
-            <label class="export" (click)="exportCharacter()" [ghs-label]="'character.progress.export'"
+            <label class="export ignore-denied" (click)="exportCharacter()" [ghs-label]="'character.progress.export'"
               [ghs-label-attribute]="'title'">
               <img src="./assets/images/export.svg">
               <span [ghs-label]="'character.progress.export'"></span>
@@ -321,6 +350,7 @@
               <img src="./assets/images/import.svg"><span [ghs-label]="'character.progress.import'"></span>
             </label>
           </div>
+
           <span class="toggle-fh-sheet ignore-denied" (click)="toggleFhSheet()">
             <span [ghs-label]="'character.progress.fh.' + (fhSheet ? 'disable': 'enable')"></span>
           </span>
@@ -328,4 +358,6 @@
       </div>
     </div>
   </div>
+
+  <div *ngIf="hasAbilities" class="ability-cards" (click)="openAbilityCards()"></div>
 </div>

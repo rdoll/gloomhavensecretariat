@@ -1,10 +1,10 @@
 <div class="menu-container two-column server">
   <div class="column">
-    <form #serverFrom (ngSubmit)="connect(serverUrl.value,serverPort.value,serverPassword.value)">
+    <form #serverFrom (ngSubmit)="connect(serverUrl.value,serverPort.value,serverCode.value)">
       <div class="line">
         <label>
-          <input type="checkbox" [checked]="settingsManager.settings.serverAutoconnect"
-            (change)="settingsManager.setServerAutoconnect(!settingsManager.settings.serverAutoconnect)">
+          <input tabclick type="checkbox" [checked]="settingsManager.settings.serverAutoconnect"
+            (change)="settingsManager.toggle('serverAutoconnect')">
           <span [ghs-label]="'server.autoconnect'"></span>
         </label>
       </div>
@@ -12,7 +12,7 @@
       <div class="line">
         <label>
           <div class="hint-container">
-            <input type="checkbox" [checked]="settingsManager.settings.serverSettings"
+            <input tabclick type="checkbox" [checked]="settingsManager.settings.serverSettings"
               (change)="settingsManager.setServerSettings(!settingsManager.settings.serverSettings)">
             <span [ghs-label]="'server.settings'"></span><img src="./assets/images/hint.svg"
               class="hint-trigger ghs-svg">
@@ -33,19 +33,27 @@
       </div>
 
       <div class="line separator" *ngIf="publicServer">
-        <select (change)="selectServer($event)">
+        <select tabclick (change)="selectServer($event)">
           <option><span [ghs-label]="('server.list.' + (selectedServerIndex == -1 ? 'select' : 'deselect'))"></span>
           </option>
           <option *ngFor="let server of publicServer; let i = index;" [value]="i" [selected]="selectedServerIndex == i">
-            {{server.url}}:{{server.port}}
+            {{server.url}}
           </option>
         </select>
       </div>
 
       <div class="server-info" *ngIf="selectedServerIndex != -1">
+
+        <label><span [ghs-label]="'server.url'"></span></label>
+        <p>{{publicServer[selectedServerIndex].url}}</p>
+
+        <label><span [ghs-label]="'server.port'"></span></label>
+        <p>{{publicServer[selectedServerIndex].port}}</p>
+
         <ng-container *ngFor="let url of publicServer[selectedServerIndex].urls | keyvalue">
           <label><span [ghs-label]="'server.info.' + url.key"></span></label>
-          <p><a [href]="url.value" target="_blank">{{url.value.replace('http://', '').replace('https://', '')}}</a></p>
+          <p><a tabclick [href]="url.value" target="_blank">{{url.value.replace('http://', '').replace('https://',
+              '')}}</a></p>
         </ng-container>
 
         <label><span [ghs-label]="'server.info.description'"></span></label>
@@ -57,7 +65,18 @@
         <ng-container
           *ngIf="gameManager.stateManager.serverVersion && gameManager.stateManager.wsState() == WebSocket.OPEN">
           <label><span [ghs-label]="'server.info.version'"></span></label>
-          <p>{{gameManager.stateManager.serverVersion}}</p>
+          <div class="server-version">
+            <span>{{gameManager.stateManager.serverVersion}}</span>
+            <span class="unknown" *ngIf="!serverUpdateVersion">
+              <span [ghs-label]="'server.info.version.unknown'"></span>
+            </span>
+            <span class="latest" *ngIf="serverUpdateVersion && serverUpdateVersion.latest">
+              <span [ghs-label]="'server.info.version.latest'"></span>
+            </span>
+            <span class="update" *ngIf="serverUpdateVersion && !serverUpdateVersion.latest">
+              <span [ghs-label]="'server.info.version.update'" [ghs-label-args]="[serverUpdateVersion.version, serverUpdateVersion.url]"></span>
+            </span>
+          </div>
         </ng-container>
       </div>
 
@@ -78,22 +97,22 @@
           (change)="setServerPort($event)" [ghs-label]="'server.port'" [ghs-label-attribute]="'placeholder'">
       </div>
       <div class="line" [ngClass]="{'separator' : selectedServerIndex != -1}">
-        <div class="password-container">
-          <label class="label"><span [ghs-label]="'server.password'"></span></label>
+        <div class="code-container">
+          <label class="label"><span [ghs-label]="'server.code'"></span></label>
           <span class="spacer"></span>
-          <a *ngIf="!settingsManager.settings.serverPassword" (click)="createUUID()">
-            <span [ghs-label]="'server.password.uuid'"></span>
+          <a *ngIf="!settingsManager.settings.serverCode" (click)="createUUID()">
+            <span [ghs-label]="'server.code.uuid'"></span>
           </a>
         </div>
       </div>
       <div class="line">
         <div class="hint-container">
-          <input type="text" #serverPassword [value]="settingsManager.settings.serverPassword || ''" (keyup)="0"
-            (keydown.enter)="serverFrom.submit()" (change)="setServerPassword($event)" [ghs-label]="'server.password'"
+          <input type="text" #serverCode [value]="settingsManager.settings.serverCode || ''" (keyup)="0"
+            (keydown.enter)="serverFrom.submit()" (change)="setServerCode($event)" [ghs-label]="'server.code'"
             [ghs-label-attribute]="'placeholder'">
           <img src="./assets/images/hint.svg" class="hint-trigger ghs-svg">
           <span class="hint">
-            <span class="text" [ghs-label]="'server.password.hint'"></span>
+            <span class="text" [ghs-label]="'server.code.hint'"></span>
           </span>
         </div>
       </div>
@@ -102,16 +121,16 @@
         <div class="column">
           <div class="line">
             <label>
-              <input type="checkbox" [checked]="settingsManager.settings.serverWss" (change)="settingsManager.setServerWss(!settingsManager.settings.serverWss);
+              <input tabclick type="checkbox" [checked]="settingsManager.settings.serverWss" (change)="settingsManager.toggle('serverWss');
                 this.updateServer();">
               <span [ghs-label]="'server.wss'"></span>
             </label>
           </div>
         </div>
         <div class="column"
-          *ngIf="settingsManager.settings.serverWss && serverUrl.value && serverPort.value && serverPassword.value && tryConnect && gameManager.stateManager.wsState() != WebSocket.OPEN">
+          *ngIf="settingsManager.settings.serverWss && serverUrl.value && serverPort.value && serverCode.value && tryConnect && gameManager.stateManager.wsState() != WebSocket.OPEN">
           <div class="line">
-            <a target="_blank"
+            <a tabclick target="_blank"
               [href]="gameManager.stateManager.buildWsUrl('https://', serverUrl.value, serverPort.value)">
               <span [ghs-label]="'server.wss.accept'"></span>
             </a>
@@ -122,14 +141,25 @@
       <div class="server-info"
         *ngIf="selectedServerIndex == -1 && gameManager.stateManager.serverVersion && gameManager.stateManager.wsState() == WebSocket.OPEN">
         <label><span [ghs-label]="'server.info.version'"></span></label>
-        <p>{{gameManager.stateManager.serverVersion}}</p>
+        <div class="server-version">
+          <span>{{gameManager.stateManager.serverVersion}}</span>
+          <span class="unknown" *ngIf="!serverUpdateVersion">
+            <span [ghs-label]="'server.info.version.unknown'"></span>
+          </span>
+          <span class="latest" *ngIf="serverUpdateVersion && serverUpdateVersion.latest">
+            <span [ghs-label]="'server.info.version.latest'"></span>
+          </span>
+          <span class="update" *ngIf="serverUpdateVersion && !serverUpdateVersion.latest">
+            <span [ghs-label]="'server.info.version.update'" [ghs-label-args]="[serverUpdateVersion.version, serverUpdateVersion.url]"></span>
+          </span>
+        </div>
       </div>
-      
+
       <div class="columns">
         <div class="column">
           <div class="line">
-            <a (click)="reconnect()"
-              [ngClass]="{'disabled' : !serverUrl.value || !serverPort.value || !serverPassword.value}">
+            <a tabclick (click)="reconnect()"
+              [ngClass]="{'disabled' : !serverUrl.value || !serverPort.value || !serverCode.value}">
               <span
                 [ghs-label]="(gameManager.stateManager.wsState() == WebSocket.OPEN ? 'server.reconnect' : 'server.connect')"></span>
             </a>
@@ -137,7 +167,7 @@
         </div>
         <div class="column" *ngIf="gameManager.stateManager.wsState() == WebSocket.OPEN">
           <div class="line">
-            <a (click)="disconnect()"><span [ghs-label]="'server.disconnect'"></span></a>
+            <a tabclick (click)="disconnect()"><span [ghs-label]="'server.disconnect'"></span></a>
           </div>
         </div>
       </div>
@@ -152,7 +182,8 @@
         <p><span [ghs-label]="'permissions.hasAll'"></span></p>
       </div>
       <div class="line">
-        <a (click)="createPermissions = !createPermissions"><span [ghs-label]="'permissions.create'"></span></a>
+        <a tabclick (click)="createPermissions = !createPermissions"><span
+            [ghs-label]="'permissions.create'"></span></a>
       </div>
     </ng-container>
 
@@ -168,7 +199,7 @@
       <div class="line">
         <div class="hint-container">
           <label>
-            <input type="checkbox" [checked]="!permissions" (change)="permissionsAll($event)">
+            <input tabclick type="checkbox" [checked]="!permissions" (change)="permissionsAll($event)">
             <span [ghs-label]="'permissions.all'"></span>
           </label>
           <img src="./assets/images/hint.svg" class="hint-trigger ghs-svg">
@@ -180,7 +211,7 @@
       <div class="line">
         <div class="hint-container">
           <label>
-            <input type="checkbox" [checked]="permissions" (change)="permissionsCustom($event)">
+            <input tabclick type="checkbox" [checked]="permissions" (change)="permissionsCustom($event)">
             <span [ghs-label]="'permissions.custom'"></span>
           </label>
           <img src="./assets/images/hint.svg" class="hint-trigger ghs-svg">
@@ -195,7 +226,7 @@
       <div class="line" [ngClass]="{'separator' : !gameManager.stateManager.permissions}">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.characters"
+            <input tabclick type="checkbox" [checked]="permissions.characters"
               (change)="permissions.characters = !permissions.characters">
             <span [ghs-label]="'permissions.characters'"></span>
           </label>
@@ -209,7 +240,7 @@
       <div class="line characters" *ngIf="!permissions.characters">
         <ng-container *ngFor="let character of characters()">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="hasCharacter(character)" (change)="toggleCharacter(character)">
+            <input tabclick type="checkbox" [checked]="hasCharacter(character)" (change)="toggleCharacter(character)">
             {{gameManager.characterManager.characterName(character, true)}}
             <span class="edition" *ngIf="gameManager.getEdition(character)">&nbsp;[<span
                 [ghs-label]="'data.edition.' + gameManager.getEdition(character)"></span>]</span>
@@ -234,7 +265,7 @@
       <div class="line monsters" *ngIf="!permissions.monsters">
         <ng-container *ngFor="let monster of monsters()">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="hasMonster(monster)" (change)="toggleMonster(monster)">
+            <input tabclick type="checkbox" [checked]="hasMonster(monster)" (change)="toggleMonster(monster)">
             <span [ghs-label]="'data.monster.' + monster.name"></span>
             <span class="ally" *ngIf="monster.isAlly"><span [ghs-label]="'game.ally'"></span></span>
             <span class="allied" *ngIf="monster.isAllied"><span [ghs-label]="'game.allied'"></span></span>
@@ -247,7 +278,7 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.scenario"
+            <input tabclick type="checkbox" [checked]="permissions.scenario"
               (change)="permissions.scenario = !permissions.scenario">
             <span [ghs-label]="'permissions.scenario'"></span>
           </label>
@@ -261,7 +292,8 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.party" (change)="permissions.party = !permissions.party">
+            <input tabclick type="checkbox" [checked]="permissions.party"
+              (change)="permissions.party = !permissions.party">
             <span [ghs-label]="'permissions.party'"></span>
           </label>
           <img src="./assets/images/hint.svg" class="hint-trigger ghs-svg">
@@ -274,7 +306,7 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.elements"
+            <input tabclick type="checkbox" [checked]="permissions.elements"
               (change)="permissions.elements = !permissions.elements">
             <span [ghs-label]="'permissions.elements'"></span>
           </label>
@@ -288,7 +320,8 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.round" (change)="permissions.round = !permissions.round">
+            <input tabclick type="checkbox" [checked]="permissions.round"
+              (change)="permissions.round = !permissions.round">
             <span [ghs-label]="'permissions.round'"></span>
           </label>
           <img src="./assets/images/hint.svg" class="hint-trigger ghs-svg">
@@ -301,7 +334,8 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.level" (change)="permissions.level = !permissions.level">
+            <input tabclick type="checkbox" [checked]="permissions.level"
+              (change)="permissions.level = !permissions.level">
             <span [ghs-label]="'permissions.level'"></span>
           </label>
           <img src="./assets/images/hint.svg" class="hint-trigger ghs-svg">
@@ -314,7 +348,7 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.attackModifiers"
+            <input tabclick type="checkbox" [checked]="permissions.attackModifiers"
               (change)="permissions.attackModifiers = !permissions.attackModifiers">
             <span [ghs-label]="'permissions.attackModifiers'"></span>
           </label>
@@ -328,7 +362,7 @@
       <div class="line">
         <div class="hint-container">
           <label [ngClass]="{'disabled' : gameManager.stateManager.permissions}">
-            <input type="checkbox" [checked]="permissions.lootDeck"
+            <input tabclick type="checkbox" [checked]="permissions.lootDeck"
               (change)="permissions.lootDeck = !permissions.lootDeck">
             <span [ghs-label]="'permissions.lootDeck'"></span>
           </label>
@@ -342,14 +376,13 @@
 
     <ng-container *ngIf="!gameManager.stateManager.permissions">
       <div class="line">
-        <label class="label"><span [ghs-label]="'permissions.password'"></span></label>
-        <input type="text" [value]="password" (keyup)="setPermissionsPassword($event)"
-          (change)="setPermissionsPassword($event)" [ghs-label]="'permissions.password'"
-          [ghs-label-attribute]="'placeholder'">
+        <label class="label"><span [ghs-label]="'permissions.code'"></span></label>
+        <input tabclick type="text" [value]="code" (keyup)="setPermissionsCode($event)"
+          (change)="setPermissionsCode($event)" [ghs-label]="'permissions.code'" [ghs-label-attribute]="'placeholder'">
       </div>
 
       <div class="line">
-        <a (click)="savePermissions()" [ngClass]="{'disabled' : !password}"><span
+        <a tabclick (click)="savePermissions()" [ngClass]="{'disabled' : !code}"><span
             [ghs-label]="'permissions.save'"></span></a>
       </div>
     </ng-container>

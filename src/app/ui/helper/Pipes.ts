@@ -1,9 +1,10 @@
 import { Pipe, PipeTransform } from '@angular/core';
 import { settingsManager } from 'src/app/game/businesslogic/SettingsManager';
-import { ghsValueSign } from './Static';
+import { ghsDurationLabel, ghsValueSign } from './Static';
 import { ScenarioCache } from 'src/app/game/model/Scenario';
 
 @Pipe({
+	standalone: false,
   name: 'ghsValueSign'
 })
 export class GhsValueSignPipe implements PipeTransform {
@@ -14,6 +15,7 @@ export class GhsValueSignPipe implements PipeTransform {
 }
 
 @Pipe({
+	standalone: false,
   name: 'ghsRange'
 })
 export class GhsRangePipe implements PipeTransform {
@@ -27,6 +29,7 @@ export class GhsRangePipe implements PipeTransform {
 }
 
 @Pipe({
+	standalone: false,
   name: 'ghsFloor'
 })
 export class GhsFloorPipe implements PipeTransform {
@@ -36,6 +39,7 @@ export class GhsFloorPipe implements PipeTransform {
 }
 
 @Pipe({
+	standalone: false,
   name: 'ghsCeil'
 })
 export class GhsCeilPipe implements PipeTransform {
@@ -45,6 +49,7 @@ export class GhsCeilPipe implements PipeTransform {
 }
 
 @Pipe({
+	standalone: false,
   name: 'ghsMinZero'
 })
 export class GhsMinZeroPipe implements PipeTransform {
@@ -53,8 +58,19 @@ export class GhsMinZeroPipe implements PipeTransform {
   }
 }
 
+@Pipe({
+	standalone: false,
+  name: 'ghsDurationLabel'
+})
+export class GhsDurationLabelPipe implements PipeTransform {
+  transform(value: number, totalHours: boolean = false): string {
+    return ghsDurationLabel(value, totalHours);
+  }
+}
+
 
 @Pipe({
+	standalone: false,
   name: 'ghsScenarioSearch'
 })
 export class GhsScenarioSearch implements PipeTransform {

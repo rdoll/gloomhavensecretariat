@@ -5,41 +5,48 @@ import { settingsManager } from 'src/app/game/businesslogic/SettingsManager';
 import { Character } from 'src/app/game/model/Character';
 import { GameState } from 'src/app/game/model/Game';
 import { Monster } from 'src/app/game/model/Monster';
-import { Objective } from 'src/app/game/model/Objective';
-import { AttackModifierDeck } from 'src/app/game/model/data/AttackModifier';
-import { FooterComponent } from '../footer/footer';
-import { SummonState } from 'src/app/game/model/Summon';
 import { ObjectiveContainer } from 'src/app/game/model/ObjectiveContainer';
+import { SummonState } from 'src/app/game/model/Summon';
+import { AttackModifierDeck } from 'src/app/game/model/data/AttackModifier';
 import { EntityMenuDialogComponent } from '../figures/entity-menu/entity-menu-dialog';
+import { PartySheetDialogComponent } from '../figures/party/party-sheet-dialog';
+import { ScenarioChartDialogComponent } from '../figures/party/scenario-chart/scenario-chart';
+import { WorldMapComponent } from '../figures/party/world-map/world-map';
+import { FooterComponent } from '../footer/footer';
+import { HeaderComponent } from '../header/header';
+import { KeyboardShortcutsComponent } from '../header/menu/keyboard-shortcuts/keyboard-shortcuts';
 
 
-export type KEYBOARD_SHORTCUT_EVENTS = "undo" | "zoom" | "round" | "am" | "loot" | "active" | "element" | "absent" | "select";
+export type KEYBOARD_SHORTCUT_EVENTS = "undo" | "zoom" | "round" | "am" | "loot" | "active" | "element" | "absent" | "select" | "menu" | "level" | "scenario" | "handSize" | "traits" | "party" | "map" | "chart" | "damageHP";
 
 @Directive({
+	standalone: false,
     selector: '[ghs-keyboard-shortcuts]'
 })
 export class KeyboardShortcuts implements OnInit, OnDestroy {
 
+    @Input() header: HeaderComponent | undefined;
     @Input() footer: FooterComponent | undefined;
-    @Input() allowed: KEYBOARD_SHORTCUT_EVENTS[] = ["undo", "zoom"];
+    @Input() allowed: KEYBOARD_SHORTCUT_EVENTS[] = ["undo", "zoom", "menu"];
     scrollTimeout: any = null;
     zoomInterval: any = null;
     currentZoom: number = 0;
     dialogOpen: boolean = false;
+    dialogClosing: boolean = false;
     keydown: any;
     keyup: any;
     timeout: any;
 
     constructor(private dialog: Dialog) {
-        this.dialog.afterOpened.subscribe({ next: () => this.dialogOpen = true });
-        this.dialog.afterAllClosed.subscribe({ next: () => this.dialogOpen = false });
+        this.dialog.afterOpened.subscribe({ next: () => { this.dialogOpen = true; this.dialogClosing = false; } });
+        this.dialog.afterAllClosed.subscribe({ next: () => { this.dialogClosing = true; setTimeout(() => { if (this.dialogClosing) { this.dialogOpen = false; } }, 250) } });
     }
 
     applySelect() {
-        const entities = gameManager.entityManager.getIndexedEntities();
+        const entities = gameManager.entityManager.getIndexedEntities(gameManager.stateManager.keyboardSelecting === 'w');
         if (gameManager.stateManager.keyboardSelect > 0 && gameManager.stateManager.keyboardSelect <= entities.length) {
             this.dialog.open(EntityMenuDialogComponent, {
-                panelClass: 'dialog',
+                panelClass: ['dialog'],
                 data: {
                     entity: entities[gameManager.stateManager.keyboardSelect - 1].entity,
                     figure: entities[gameManager.stateManager.keyboardSelect - 1].figure,
@@ -59,13 +66,13 @@ export class KeyboardShortcuts implements OnInit, OnDestroy {
         this.keydown = window.addEventListener('keydown', (event: KeyboardEvent) => {
             if (!event.altKey && !event.metaKey && (!window.document.activeElement || window.document.activeElement.tagName != 'INPUT' && window.document.activeElement.tagName != 'SELECT' && window.document.activeElement.tagName != 'TEXTAREA')) {
                 if (gameManager.stateManager.keyboardSelecting) {
-                    if (event.key === 'Escape' || event.key === 's') {
+                    if (event.key === 'Escape' || event.key === 's' || event.key === 'w') {
                         gameManager.stateManager.keyboardSelect = -1;
                         gameManager.stateManager.keyboardSelecting = false;
                     } else if (event.key === 'Enter') {
                         this.applySelect();
                     } else if (event.key in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']) {
-                        const entities = gameManager.entityManager.getIndexedEntities();
+                        const entities = gameManager.entityManager.getIndexedEntities(gameManager.stateManager.keyboardSelecting === 'w');
                         const keyNumber = +event.key;
                         if (this.timeout) {
                             clearTimeout(this.timeout);
@@ -110,52 +117,134 @@ export class KeyboardShortcuts implements OnInit, OnDestroy {
                     document.body.style.setProperty('--ghs-factor', this.currentZoom + '');
                     event.preventDefault();
                 } else if ((!this.dialogOpen || this.allowed.indexOf('round') != -1) && this.footer && !event.ctrlKey && !event.shiftKey && !this.zoomInterval && event.key.toLowerCase() === 'n') {
-                    if (!this.footer.disabled()) {
-                        this.footer.next();
-                    }
-                } else if ((!this.dialogOpen || this.allowed.indexOf('am') != -1) && gameManager.game.state == GameState.next && !event.ctrlKey && !event.shiftKey && !this.zoomInterval && event.key.toLowerCase() === 'm') {
+                    this.footer.next();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('am') != -1) && !event.ctrlKey && !event.shiftKey && !this.zoomInterval && gameManager.game.state == GameState.next && (event.key.toLowerCase() === 'm' || settingsManager.settings.amAdvantage && (event.key.toLowerCase() === 'a' || event.key.toLowerCase() === 'd'))) {
                     const activeFigure = gameManager.game.figures.find((figure) => figure.active);
                     let deck: AttackModifierDeck | undefined = undefined;
+                    const state: 'advantage' | 'disadvantage' | undefined = settingsManager.settings.amAdvantage && event.key.toLowerCase() === 'a' ? 'advantage' : (settingsManager.settings.amAdvantage && event.key.toLowerCase() === 'd' ? 'disadvantage' : undefined);
+
                     if (!activeFigure || activeFigure instanceof Monster && (!activeFigure.isAlly && !activeFigure.isAllied || !gameManager.fhRules() && !settingsManager.settings.alwaysAllyAttackModifierDeck || !settingsManager.settings.allyAttackModifierDeck)) {
-                        gameManager.stateManager.before("updateAttackModifierDeck.draw", "monster");
+                        gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), "monster");
                         deck = gameManager.game.monsterAttackModifierDeck;
                     } else if (activeFigure instanceof Monster) {
-                        gameManager.stateManager.before("updateAttackModifierDeck.draw", "ally");
+                        gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), "ally");
                         deck = gameManager.game.allyAttackModifierDeck;
                     } else if (activeFigure instanceof Character) {
                         if (settingsManager.settings.characterAttackModifierDeck) {
                             if (activeFigure.attackModifierDeckVisible) {
-                                gameManager.stateManager.before("updateAttackModifierDeck.draw", gameManager.characterManager.characterName(activeFigure));
+                                gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), gameManager.characterManager.characterName(activeFigure));
                                 deck = activeFigure.attackModifierDeck;
                             } else {
                                 activeFigure.attackModifierDeckVisible = true;
                             }
                         } else {
-                            gameManager.stateManager.before("updateAttackModifierDeck.draw", "monster");
+                            gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), "monster");
                             deck = gameManager.game.monsterAttackModifierDeck;
+                        }
+                    } else if (activeFigure instanceof ObjectiveContainer) {
+                        if (!activeFigure.amDeck || activeFigure.amDeck == 'M' || activeFigure.amDeck == 'A' && (!gameManager.fhRules() && !settingsManager.settings.alwaysAllyAttackModifierDeck || !settingsManager.settings.allyAttackModifierDeck)) {
+                            gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), "monster");
+                            deck = gameManager.game.monsterAttackModifierDeck;
+                        } else if (activeFigure.amDeck == 'A' && settingsManager.settings.allyAttackModifierDeck && (gameManager.fhRules() || settingsManager.settings.alwaysAllyAttackModifierDeck)) {
+                            gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), "ally");
+                            deck = gameManager.game.allyAttackModifierDeck;
+                        } else if (activeFigure.amDeck) {
+                            const character = gameManager.game.figures.find((figure) => figure instanceof Character && figure.name == activeFigure.amDeck) as Character;
+                            if (character && settingsManager.settings.characterAttackModifierDeck) {
+                                if (character.attackModifierDeckVisible) {
+                                    gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), gameManager.characterManager.characterName(character));
+                                    deck = character.attackModifierDeck;
+                                } else {
+                                    character.attackModifierDeckVisible = true;
+                                }
+                            } else {
+                                gameManager.stateManager.before("updateAttackModifierDeck.draw" + (state ? state : ''), "monster");
+                                deck = gameManager.game.monsterAttackModifierDeck;
+                            }
                         }
                     }
 
                     if (deck) {
                         deck.active = true;
-                        gameManager.attackModifierManager.drawModifier(deck);
+                        gameManager.attackModifierManager.drawModifier(deck, state);
                         gameManager.stateManager.after();
                     }
                     event.preventDefault();
-                } else if ((!this.dialogOpen || this.allowed.indexOf('loot') != -1) && gameManager.game.state == GameState.next && !event.ctrlKey && !event.shiftKey && !this.zoomInterval && event.key.toLowerCase() === 'l' && settingsManager.settings.lootDeck && gameManager.game.lootDeck.cards.length > 0) {
-                    gameManager.stateManager.before('lootDeckDraw');
-                    gameManager.game.lootDeck.active = true;
-                    const activeCharacter = gameManager.game.figures.find((figure) => figure instanceof Character && figure.active);
-                    if (!settingsManager.settings.alwaysLootApplyDialog && activeCharacter instanceof Character) {
-                        gameManager.lootManager.drawCard(gameManager.game.lootDeck, activeCharacter);
-                    } else {
-                        gameManager.lootManager.drawCard(gameManager.game.lootDeck, undefined);
+                } else if ((!this.dialogOpen || this.allowed.indexOf('loot') != -1) && gameManager.game.state == GameState.next && !event.ctrlKey && !event.shiftKey && !this.zoomInterval && event.key.toLowerCase() === 'l' && settingsManager.settings.lootDeck && gameManager.game.lootDeck.cards.length > 0 && this.footer && this.footer.lootDeck) {
+                    if (!this.footer.lootDeck.deck.active) {
+                        this.footer.toggleLootDeck();
                     }
-                    gameManager.stateManager.after();
-
+                    this.footer.lootDeck.draw(event, true);
                     event.preventDefault();
-                } else if ((!this.dialogOpen || this.allowed.indexOf('active') != -1) && !event.ctrlKey && gameManager.game.state == GameState.next && event.key === 'Tab') {
-                    this.toggleEntity(event.shiftKey);
+                } else if (!this.dialogOpen && !event.ctrlKey && event.key === 'Tab' && gameManager.game.figures.length > 0) {
+                    if (gameManager.game.state == GameState.next) {
+                        this.toggleEntity(event.shiftKey);
+                    } else {
+                        let focus = true;
+                        gameManager.game.figures.filter((figure) => figure instanceof Character && !figure.absent).forEach((char, index) => {
+                            const current = document.getElementById('initiative-input-' + index);
+                            if (document.activeElement == current) {
+                                focus = false;
+                            }
+                        })
+                        if (focus) {
+                            const current = document.getElementById('initiative-input-0');
+                            if (current) {
+                                current.focus();
+                            }
+                        }
+                        event.stopPropagation();
+                    }
+                    event.preventDefault();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('level') != -1) && this.footer && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'x' && this.footer.ghsLevel) {
+                    this.footer.ghsLevel.open();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('scenario') != -1) && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'e') {
+                    if (gameManager.game.scenario && this.header) {
+                        this.header.openEventEffects();
+                    } else if (!gameManager.game.scenario && this.footer && this.footer.ghsScenario) {
+                        this.footer.ghsScenario.open(event);
+                    }
+                } else if ((!this.dialogOpen || this.allowed.indexOf('scenario') != -1) && this.footer && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'f' && this.footer.ghsScenario && gameManager.game.scenario) {
+                    this.footer.ghsScenario.open(event);
+                } else if ((!this.dialogOpen || this.allowed.indexOf('party') != -1) && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'p' && settingsManager.settings.partySheet) {
+                    this.dialog.open(PartySheetDialogComponent, {
+                        panelClass: ['dialog-invert'],
+                        data: { partySheet: true }
+                    });
+                    event.stopPropagation();
+                    event.preventDefault();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('map') != -1) && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'g' && gameManager.game.edition) {
+                    const editionData = gameManager.editionData.find((editionData) => editionData.edition == gameManager.game.edition);
+                    if (editionData) {
+                        if (editionData.worldMap || editionData.extendWorldMap) {
+                            if (this.dialogOpen) {
+                                this.dialog.closeAll();
+                            }
+                            this.dialog.open(WorldMapComponent, {
+                                panelClass: ['fullscreen-panel'],
+                                backdropClass: ['fullscreen-backdrop'],
+                                data: gameManager.game.edition
+                            })
+                            event.stopPropagation();
+                            event.preventDefault();
+                        }
+                    }
+                } else if ((!this.dialogOpen || this.allowed.indexOf('chart') != -1) && !event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'c' && gameManager.game.edition) {
+                    if (this.dialogOpen) {
+                        this.dialog.closeAll();
+                    }
+                    this.dialog.open(ScenarioChartDialogComponent, {
+                        panelClass: ['fullscreen-panel'],
+                        backdropClass: ['fullscreen-backdrop'],
+                        data: {
+                            edition: gameManager.game.edition
+                        }
+                    })
+                    event.stopPropagation();
+                    event.preventDefault();
+                } else if (!this.dialogOpen && !event.ctrlKey && this.header && event.key === 'Escape') {
+                    this.header.openMenu();
+                    event.stopPropagation();
                     event.preventDefault();
                 } else if ((!this.dialogOpen || this.allowed.indexOf('element') != -1) && !event.ctrlKey && !event.shiftKey && ['1', '2', '3', '4', '5', '6'].indexOf(event.key) != -1) {
                     const index: number = +event.key - 1;
@@ -166,10 +255,25 @@ export class KeyboardShortcuts implements OnInit, OnDestroy {
                     gameManager.stateManager.after();
                     event.preventDefault();
                 } else if ((!this.dialogOpen || this.allowed.indexOf('absent') != -1) && !event.ctrlKey && !event.shiftKey && event.key === 'h') {
-                    settingsManager.setHideAbsent(!settingsManager.settings.hideAbsent);
+                    settingsManager.toggle('hideAbsent');
                     event.preventDefault();
-                } else if ((!this.dialogOpen || this.allowed.indexOf('select') != -1) && !event.ctrlKey && !event.shiftKey && event.key === 's') {
-                    gameManager.stateManager.keyboardSelecting = true;
+                } else if ((!this.dialogOpen || this.allowed.indexOf('handSize') != -1) && !event.ctrlKey && event.shiftKey && event.key === 'H') {
+                    settingsManager.toggle('characterHandSize');
+                    event.preventDefault();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('traits') != -1) && !event.ctrlKey && !event.shiftKey && event.key === 't') {
+                    settingsManager.toggle('characterTraits');
+                    event.preventDefault();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('damageHP') != -1) && !event.ctrlKey && !event.shiftKey && event.key === 'i') {
+                    settingsManager.toggle('damageHP');
+                    event.preventDefault();
+                } else if ((!this.dialogOpen || this.allowed.indexOf('select') != -1) && !event.ctrlKey && !event.shiftKey && (event.key === 's' || event.key === 'w')) {
+                    gameManager.stateManager.keyboardSelecting = event.key;
+                    gameManager.uiChange.emit();
+                } else if (!this.dialogOpen && !event.ctrlKey && event.key === '?') {
+                    this.dialog.open(KeyboardShortcutsComponent, {
+                        panelClass: ['dialog'],
+                    });
+                    event.preventDefault();
                 }
             }
         })
@@ -265,7 +369,7 @@ export class KeyboardShortcuts implements OnInit, OnDestroy {
                     gameManager.roundManager.toggleFigure(activeFigure);
                     gameManager.stateManager.after();
                 }
-            } else if (activeFigure instanceof Objective || activeFigure instanceof ObjectiveContainer) {
+            } else if (activeFigure instanceof ObjectiveContainer) {
                 gameManager.stateManager.before(activeFigure.active ? "unsetActive" : "setActive", activeFigure.title || activeFigure.name);
                 gameManager.roundManager.toggleFigure(activeFigure);
                 gameManager.stateManager.after();

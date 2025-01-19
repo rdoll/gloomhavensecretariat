@@ -31,7 +31,7 @@ export function valueCalc(value: string | number, level: number | undefined = un
   if (settingsManager.settings.calculate && (value.match(EntityExpressionRegex) || value.match(EntityValueRegex))) {
     try {
       return EntityValueFunction(value, L)
-    } catch {
+    } catch (e) {
       console.error("Could not calculate value for: ", value);
       return value;
     }
@@ -40,11 +40,16 @@ export function valueCalc(value: string | number, level: number | undefined = un
   const match = value.match(EntityValueRegex);
   if (match) {
     let func = match[3];
+    let funcArgs: string[] = [];
     const funcLabel = func && func.startsWith('$');
     if (funcLabel) {
       func = func.replace('$', '');
+      if (func.indexOf(':') != -1) {
+        funcArgs = [func.split(':')[1]];
+        func = func.split(':')[0];
+      }
     }
-    return funcLabel ? match[1] + ' ' + settingsManager.getLabel('game.custom.' + func) : match[1];
+    return funcLabel ? match[1] + ' ' + settingsManager.getLabel('game.custom.' + func, funcArgs) : match[1];
   }
 
 
@@ -58,6 +63,7 @@ export function valueCalc(value: string | number, level: number | undefined = un
 }
 
 @Directive({
+	standalone: false,
   selector: ' [value-calc]'
 })
 export class ValueCalcDirective implements OnInit, OnDestroy, OnChanges {

@@ -1,20 +1,23 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { ConnectionPositionPair, Overlay } from '@angular/cdk/overlay';
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { gameManager, GameManager } from 'src/app/game/businesslogic/GameManager';
+import { GameManager, gameManager } from 'src/app/game/businesslogic/GameManager';
 import { SettingsManager, settingsManager } from 'src/app/game/businesslogic/SettingsManager';
 import { Character } from 'src/app/game/model/Character';
 import { GameState } from 'src/app/game/model/Game';
 import { Monster } from 'src/app/game/model/Monster';
-import { AttackModiferDeckChange } from '../figures/attackmodifier/attackmodifierdeck';
-import { HintDialogComponent } from './hint-dialog/hint-dialog';
-import { LootDeckChange } from '../figures/loot/loot-deck';
-import { Objective } from 'src/app/game/model/Objective';
-import { ScenarioSummaryComponent } from './scenario/summary/scenario-summary';
-import { ScenarioConclusionComponent } from './scenario/scenario-conclusion/scenario-conclusion';
 import { ObjectiveContainer } from 'src/app/game/model/ObjectiveContainer';
+import { AttackModiferDeckChange, AttackModifierDeckComponent } from '../figures/attackmodifier/attackmodifierdeck';
+import { ChallengeDeckChange } from '../figures/challenges/challenge-deck';
+import { LootDeckChange, LootDeckComponent } from '../figures/loot/loot-deck';
+import { HintDialogComponent } from './hint-dialog/hint-dialog';
+import { LevelComponent } from './level/level';
+import { ScenarioComponent } from './scenario/scenario';
+import { ScenarioConclusionComponent } from './scenario/scenario-conclusion/scenario-conclusion';
+import { ScenarioSummaryComponent } from './scenario/summary/scenario-summary';
 
 @Component({
+	standalone: false,
   selector: 'ghs-footer',
   templateUrl: './footer.html',
   styleUrls: ['./footer.scss']
@@ -24,13 +27,18 @@ export class FooterComponent implements OnInit {
   @ViewChild('nextButton', { static: false }) nextButton!: ElementRef;
   @ViewChild('footer', { static: false }) footer!: ElementRef;
   @ViewChild('monsterDeck', { static: false }) monsterDeck!: ElementRef;
+  @ViewChild('ghsLevel', { static: false }) ghsLevel!: LevelComponent;
+  @ViewChild('ghsScenario', { static: false }) ghsScenario!: ScenarioComponent;
+  @ViewChild('monsterAttackModifierDeck', { static: false }) monsterAttackModifierDeck!: AttackModifierDeckComponent;
+  @ViewChild('allyAttackModifierDeck', { static: false }) allyAttackModifierDeck!: AttackModifierDeckComponent;
+  @ViewChild('lootDeck', { static: false }) lootDeck!: LootDeckComponent;
 
   gameManager: GameManager = gameManager;
   settingsManager: SettingsManager = settingsManager;
   GameState = GameState;
   currentTime: string = "";
   hasAllyAttackModifierDeck: boolean = false;
-  lootDeck: boolean = false;
+  lootDeckEnabeld: boolean = false;
 
   compact: boolean = false;
 
@@ -39,14 +47,14 @@ export class FooterComponent implements OnInit {
   constructor(private dialog: Dialog, private overlay: Overlay) { }
 
   ngOnInit(): void {
-    this.hasAllyAttackModifierDeck = settingsManager.settings.allyAttackModifierDeck && (settingsManager.settings.alwaysAllyAttackModifierDeck || gameManager.fhRules() && gameManager.game.figures.some((figure) => figure instanceof Monster && (figure.isAlly || figure.isAllied) || (figure instanceof Objective || figure instanceof ObjectiveContainer) && figure.objectiveId && gameManager.objectiveDataByScenarioObjectiveIdentifier(figure.objectiveId)?.allyDeck) || gameManager.game.scenario && gameManager.game.scenario.allyDeck) || false;
+    this.hasAllyAttackModifierDeck = settingsManager.settings.allyAttackModifierDeck && (settingsManager.settings.alwaysAllyAttackModifierDeck || gameManager.fhRules() && gameManager.game.figures.some((figure) => figure instanceof Monster && (figure.isAlly || figure.isAllied) || figure instanceof ObjectiveContainer && figure.objectiveId && gameManager.objectiveManager.objectiveDataByObjectiveIdentifier(figure.objectiveId)?.allyDeck) || gameManager.game.scenario && gameManager.game.scenario.allyDeck) || false;
 
-    this.lootDeck = settingsManager.settings.lootDeck && Object.keys(gameManager.game.lootDeck.cards).length > 0;
+    this.lootDeckEnabeld = settingsManager.settings.lootDeck && Object.keys(gameManager.game.lootDeck.cards).length > 0;
 
     gameManager.uiChange.subscribe({
       next: () => {
-        this.hasAllyAttackModifierDeck = settingsManager.settings.allyAttackModifierDeck && (settingsManager.settings.alwaysAllyAttackModifierDeck || gameManager.fhRules() && gameManager.game.figures.some((figure) => figure instanceof Monster && (figure.isAlly || figure.isAllied) || (figure instanceof Objective || figure instanceof ObjectiveContainer) && figure.objectiveId && gameManager.objectiveDataByScenarioObjectiveIdentifier(figure.objectiveId)?.allyDeck) || gameManager.game.scenario && gameManager.game.scenario.allyDeck) || false;
-        this.lootDeck = settingsManager.settings.lootDeck && Object.keys(gameManager.game.lootDeck.cards).length > 0;
+        this.hasAllyAttackModifierDeck = settingsManager.settings.allyAttackModifierDeck && (settingsManager.settings.alwaysAllyAttackModifierDeck || gameManager.fhRules() && gameManager.game.figures.some((figure) => figure instanceof Monster && (figure.isAlly || figure.isAllied) || figure instanceof ObjectiveContainer && figure.objectiveId && gameManager.objectiveManager.objectiveDataByObjectiveIdentifier(figure.objectiveId)?.allyDeck) || gameManager.game.scenario && gameManager.game.scenario.allyDeck) || false;
+        this.lootDeckEnabeld = settingsManager.settings.lootDeck && Object.keys(gameManager.game.lootDeck.cards).length > 0;
       }
     })
 
@@ -73,11 +81,11 @@ export class FooterComponent implements OnInit {
     }, 1000)
 
     setTimeout(() => {
-      this.compact = this.monsterDeck.nativeElement.clientWidth > this.footer.nativeElement.clientWidth * 0.3;
+      this.compact = this.monsterDeck && this.monsterDeck.nativeElement.clientWidth > this.footer.nativeElement.clientWidth * 0.3;
     }, 100)
 
     window.addEventListener('resize', (event) => {
-      this.compact = this.monsterDeck.nativeElement.clientWidth > this.footer.nativeElement.clientWidth * 0.3;
+      this.compact = this.monsterDeck && this.monsterDeck.nativeElement.clientWidth > this.footer.nativeElement.clientWidth * 0.3;
     });
   }
 
@@ -85,7 +93,7 @@ export class FooterComponent implements OnInit {
     if (!force && this.disabled()) {
       this.nextHint = true;
       const dialogRef = this.dialog.open(HintDialogComponent, {
-        panelClass: 'dialog',
+        panelClass: ['dialog'],
         positionStrategy: this.overlay.position().flexibleConnectedTo(this.nextButton).withPositions([new ConnectionPositionPair(
           { originX: 'end', originY: 'bottom' },
           { overlayX: 'start', overlayY: 'bottom' })]).withDefaultOffsetX(10).withDefaultOffsetY(-10)
@@ -151,6 +159,15 @@ export class FooterComponent implements OnInit {
     gameManager.stateManager.after();
   }
 
+  beforeChallengeDeck(change: ChallengeDeckChange) {
+    gameManager.stateManager.before(change.type, ...change.values)
+  }
+
+  afterChallengeDeck(change: ChallengeDeckChange) {
+    gameManager.game.challengeDeck = change.deck;
+    gameManager.stateManager.after();
+  }
+
   confirmTurns() {
     gameManager.game.figures.forEach((figure) => gameManager.roundManager.afterTurn(figure));
     this.next(true);
@@ -167,7 +184,7 @@ export class FooterComponent implements OnInit {
 
       if (conclusions.length == 0 || !success) {
         this.dialog.open(ScenarioSummaryComponent, {
-          panelClass: 'dialog',
+          panelClass: ['dialog'],
           data: {
             scenario: gameManager.game.scenario,
             success: success
@@ -181,7 +198,7 @@ export class FooterComponent implements OnInit {
           next: (conclusion) => {
             if (conclusion) {
               this.dialog.open(ScenarioSummaryComponent, {
-                panelClass: 'dialog',
+                panelClass: ['dialog'],
                 data: {
                   scenario: gameManager.game.scenario,
                   conclusion: conclusion,
@@ -229,7 +246,7 @@ export class FooterComponent implements OnInit {
   }
 
   battleGoals(): boolean {
-    return !this.missingInitiative() && settingsManager.settings.battleGoals && settingsManager.settings.battleGoalsReminder && gameManager.game.scenario != undefined && gameManager.roundManager.firstRound && !gameManager.game.figures.every((figure) => !(figure instanceof Character) || figure.battleGoal || figure.absent);
+    return !this.missingInitiative() && settingsManager.settings.battleGoals && settingsManager.settings.battleGoalsReminder && gameManager.game.scenario != undefined && gameManager.roundManager.firstRound && !gameManager.game.figures.every((figure) => !(figure instanceof Character) || figure.battleGoal || figure.absent) && !gameManager.bbRules();
   }
 
   activeHint(): boolean {
@@ -269,8 +286,9 @@ export class FooterComponent implements OnInit {
 
   toggleActiveMonsterAttackModifierDeck() {
     this.beforeMonsterAttackModifierDeck(new AttackModiferDeckChange(gameManager.game.monsterAttackModifierDeck, gameManager.game.monsterAttackModifierDeck.active && (!this.compact || !gameManager.game.lootDeck.active) ? 'amDeckHide' : 'amDeckShow'));
-    if (this.compact && gameManager.game.lootDeck.active) {
+    if (this.compact && (gameManager.game.lootDeck.active || gameManager.game.challengeDeck.active)) {
       gameManager.game.lootDeck.active = false;
+      gameManager.game.challengeDeck.active = false;
       gameManager.game.monsterAttackModifierDeck.active = true;
     } else {
       gameManager.game.monsterAttackModifierDeck.active = !gameManager.game.monsterAttackModifierDeck.active;
@@ -284,4 +302,9 @@ export class FooterComponent implements OnInit {
     this.afterLootDeck(new LootDeckChange(gameManager.game.lootDeck, !gameManager.game.lootDeck.active ? 'lootDeckHide' : 'lootDeckShow'));
   }
 
+  toggleChallengeDeck() {
+    this.beforeChallengeDeck(new ChallengeDeckChange(gameManager.game.challengeDeck, gameManager.game.challengeDeck.active ? 'challengeDeckHide' : 'challengeDeckShow'));
+    gameManager.game.challengeDeck.active = !gameManager.game.challengeDeck.active;
+    this.afterChallengeDeck(new ChallengeDeckChange(gameManager.game.challengeDeck, !gameManager.game.challengeDeck.active ? 'challengeDeckHide' : 'challengeDeckShow'));
+  }
 }

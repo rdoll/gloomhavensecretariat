@@ -35,6 +35,7 @@ export enum ConditionType {
   monster = "monster",
   upgrade = "upgrade",
   stack = "stack",
+  stackable = "stackable",
   turn = "turn",
   afterTurn = "afterTurn",
   expire = "expire",
@@ -42,6 +43,7 @@ export enum ConditionType {
   clearHeal = "clearHeal",
   preventHeal = "preventHeal",
   apply = "apply",
+  autoApply = "autoApply",
   positive = "positive",
   negative = "negative",
   double = "double",
@@ -103,8 +105,12 @@ export class Condition {
       this.types.push(ConditionType.value);
     }
 
-    if ([ConditionName.bless, ConditionName.chill, ConditionName.curse].indexOf(this.name) != -1) {
+    if ([ConditionName.chill].indexOf(this.name) != -1) {
       this.types.push(ConditionType.stack);
+    }
+
+    if ([ConditionName.chill, ConditionName.bless, ConditionName.curse, ConditionName.enfeeble, ConditionName.empower].indexOf(this.name) != -1) {
+      this.types.push(ConditionType.stackable);
     }
 
     if ([ConditionName.wound, ConditionName.wound_x, ConditionName.regenerate].indexOf(this.name) != -1) {
@@ -121,6 +127,10 @@ export class Condition {
 
     if ([ConditionName.poison, ConditionName.poison_x, ConditionName.ward, ConditionName.brittle, ConditionName.heal, ConditionName.shield].indexOf(this.name) != -1) {
       this.types.push(ConditionType.apply);
+    }
+
+    if ([ConditionName.ward, ConditionName.brittle, ConditionName.heal, ConditionName.shield].indexOf(this.name) != -1) {
+      this.types.push(ConditionType.autoApply);
     }
 
     if ([ConditionName.poison, ConditionName.poison_x].indexOf(this.name) != -1) {

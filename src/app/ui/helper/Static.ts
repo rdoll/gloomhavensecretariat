@@ -1,3 +1,4 @@
+import { DialogRef } from "@angular/cdk/dialog";
 import { ConnectionPositionPair } from "@angular/cdk/overlay";
 import { settingsManager } from "src/app/game/businesslogic/SettingsManager";
 import { Spoilable } from "src/app/game/model/data/Spoilable";
@@ -51,9 +52,27 @@ export function ghsValueSign(value: number, empty: boolean = false): string {
   }
 }
 
+export function ghsDurationLabel(value: number, totalHours: boolean = false): string {
+  let seconds = Math.floor(value);
+  const days = Math.floor(seconds / 86400);
+  seconds -= days * 86400;
+  const hours = Math.floor(seconds / 3600);
+  seconds -= hours * 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds -= minutes * 60;
+
+  let label = settingsManager.getLabel('duration.' + (days && 'days' || hours && 'hours' || minutes && 'minutes' || 'seconds'), [seconds, minutes, hours, days].map((value) => '' + value), false);
+
+  if (totalHours) {
+    label = settingsManager.getLabel('duration.totalHours', [label, (value / 3600).toFixed(1)]);
+  }
+
+  return label;
+}
+
 export function ghsInputFullScreenCheck(): void {
   if (settingsManager.settings.fullscreen && !!document.fullscreenElement) {
-    document.exitFullscreen();
+    document.exitFullscreen && document.exitFullscreen();
     document.body.classList.add('fullscreen');
   }
   window.addEventListener('focus', ghsInputFullScreenCheckListener, true)
@@ -63,7 +82,7 @@ export function ghsInputFullScreenCheckListener(event: any) {
   setTimeout(() => {
     if (settingsManager.settings.fullscreen && !!!document.fullscreenElement) {
       try {
-        document.body.requestFullscreen();
+        document.body.requestFullscreen && document.body.requestFullscreen();
       } catch (e) { }
       document.body.classList.remove('fullscreen');
     }
@@ -73,6 +92,21 @@ export function ghsInputFullScreenCheckListener(event: any) {
 
 export function ghsModulo(n: number, m: number): number {
   return ((n % m) + m) % m;
+}
+
+export function ghsDialogClosingHelper(dialogRef: DialogRef, result: any = undefined) {
+  if (settingsManager.settings.animations && dialogRef.overlayRef.overlayElement) {
+    dialogRef.overlayRef.overlayElement.classList.add('dialog-closing');
+    if (dialogRef.overlayRef.hostElement && dialogRef.overlayRef.hostElement.getElementsByClassName('dialog-close-button')[0]) {
+      dialogRef.overlayRef.hostElement.getElementsByClassName('dialog-close-button')[0].classList.add('closing');
+    }
+    if (dialogRef.overlayRef.backdropElement) {
+      dialogRef.overlayRef.backdropElement.classList.add('backdrop-closing');
+    }
+    setTimeout(() => dialogRef.close(result), 250);
+  } else {
+    dialogRef.close(result);
+  }
 }
 
 export function ghsDefaultDialogPositions(defaultDirection: 'right' | 'left' | 'center' = 'right'): ConnectionPositionPair[] {

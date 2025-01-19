@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnInit, Output, ViewChild } from "@angular/core";
 import { GameManager, gameManager } from "src/app/game/businesslogic/GameManager";
 import { SettingsManager, settingsManager } from "src/app/game/businesslogic/SettingsManager";
 import { Action, ActionType } from "src/app/game/model/data/Action";
@@ -6,12 +6,14 @@ import { Identifier } from "src/app/game/model/data/Identifier";
 import { ItemData } from "src/app/game/model/data/ItemData";
 
 @Component({
+    standalone: false,
     selector: 'ghs-item',
     templateUrl: './item.html',
     styleUrls: ['./item.scss']
 })
-export class ItemComponent implements OnInit {
+export class ItemComponent implements OnInit, AfterViewInit {
 
+    @ViewChild('container') containerElement!: ElementRef;
     @Input() item!: ItemData | undefined;
     @Input() identifier: Identifier | undefined | false;
     @Input() flipped: boolean = false;
@@ -28,17 +30,21 @@ export class ItemComponent implements OnInit {
     @Output() clickedSlotBack = new EventEmitter<number>();
     @Output() clickedPersistent = new EventEmitter<boolean>();
     fhStyle: boolean = false;
+    bb: boolean = false;
     craft: boolean = false;
     edition: string = "";
     slots: Action[] = [];
     slotsBack: Action[] = [];
+    idNumber: boolean = false;
+    usable: boolean = true;
 
     settingsManager: SettingsManager = settingsManager;
     gameManager: GameManager = gameManager;
+    fontsize: string = "1em";
 
     ngOnInit(): void {
         if (!this.item && this.identifier) {
-            this.item = gameManager.itemManager.getItem(+this.identifier.name, this.identifier.edition, true);
+            this.item = gameManager.itemManager.getItem(this.identifier.name, this.identifier.edition, true);
         }
 
         if (this.item) {
@@ -48,6 +54,10 @@ export class ItemComponent implements OnInit {
 
             if (this.item.edition == 'fh') {
                 this.fhStyle = true;
+            }
+
+            if (this.item.edition == 'bb') {
+                this.bb = true;
             }
 
             if (this.item.resources && Object.values(this.item.resources).some((value) => value) || this.item.requiredItems && this.item.requiredItems.length > 0 || this.item.resourcesAny && this.item.resourcesAny.length > 0) {
@@ -70,7 +80,24 @@ export class ItemComponent implements OnInit {
                 this.item.actions.push(action);
             }
 
+            this.idNumber = typeof this.item.id === 'number';
+            this.usable = gameManager.itemManager.itemUsable(this.item);
         }
+
+        gameManager.uiChange.subscribe({
+            next: () => {
+                this.fontsize = (this.containerElement.nativeElement.offsetWidth * 0.072) + 'px';
+                if (this.item) {
+                    this.usable = gameManager.itemManager.itemUsable(this.item);
+                }
+            }
+        })
+    }
+
+    ngAfterViewInit(): void {
+        setTimeout(() => {
+            this.fontsize = (this.containerElement.nativeElement.offsetWidth * 0.072) + 'px';
+        }, 1);
     }
 
     applySlots(slotCount: number, actions: Action[]) {

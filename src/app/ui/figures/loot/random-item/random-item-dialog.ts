@@ -5,8 +5,10 @@ import { ItemData } from 'src/app/game/model/data/ItemData';
 import { Character } from 'src/app/game/model/Character';
 import { SettingsManager, settingsManager } from 'src/app/game/businesslogic/SettingsManager';
 import { ItemDialogComponent } from '../../items/dialog/item-dialog';
+import { ghsDialogClosingHelper } from 'src/app/ui/helper/Static';
 
 @Component({
+	standalone: false,
   selector: 'ghs-random-item-dialog',
   templateUrl: './random-item-dialog.html',
   styleUrls: ['./random-item-dialog.scss'],
@@ -26,15 +28,19 @@ export class LootRandomItemDialogComponent {
   }
 
   close() {
-    this.dialogRef.close();
+    ghsDialogClosingHelper(this.dialogRef);
   }
 
   openDialog() {
-    this.dialog.open(ItemDialogComponent, { data: { item: this.item } });
+    this.dialog.open(ItemDialogComponent, {
+      panelClass: ['fullscreen-panel'],
+      disableClose: true,
+      data: { item: this.item }
+    });
   }
 
   apply() {
-    this.dialogRef.close(this.item);
+    ghsDialogClosingHelper(this.dialogRef, this.item);
   }
 
 }

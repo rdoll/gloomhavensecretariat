@@ -1,14 +1,14 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { gameManager, GameManager } from 'src/app/game/businesslogic/GameManager';
 import { SettingsManager, settingsManager } from 'src/app/game/businesslogic/SettingsManager';
-import { AttackModifier, AttackModifierDeck, AttackModifierType } from 'src/app/game/model/data/AttackModifier';
 import { Character } from 'src/app/game/model/Character';
+import { AttackModifier, AttackModifierDeck, AttackModifierType } from 'src/app/game/model/data/AttackModifier';
 import { GameState } from 'src/app/game/model/Game';
+import { CharacterBattleGoalsDialog } from '../battlegoal/dialog/battlegoal-dialog';
 import { AttackModifierDeckDialogComponent } from './attackmodifierdeck-dialog';
 import { AttackModifierDeckFullscreenComponent } from './attackmodifierdeck-fullscreen';
-import { Subscription } from 'rxjs';
-import { CharacterBattleGoalsDialog } from '../battlegoal/dialog/battlegoal-dialog';
 
 export class AttackModiferDeckChange {
 
@@ -26,6 +26,7 @@ export class AttackModiferDeckChange {
 }
 
 @Component({
+  standalone: false,
   selector: 'ghs-attackmodifier-deck',
   templateUrl: './attackmodifierdeck.html',
   styleUrls: ['./attackmodifierdeck.scss']
@@ -33,7 +34,7 @@ export class AttackModiferDeckChange {
 export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges {
 
   @Input('deck') deck!: AttackModifierDeck;
-  @Input('character') character!: Character;
+  @Input('character') character: Character | undefined;
   @Input() ally: boolean = false;
   @Input('numeration') numeration: string = "";
   @Input('bottom') bottom: boolean = false;
@@ -60,6 +61,7 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
   AttackModifierType = AttackModifierType;
   type: AttackModifierType = AttackModifierType.minus1;
   current: number = -1;
+  lastVisible: number = 0;
   drawing: boolean = false;
   drawTimeout: any = null;
   queue: number = 0;
@@ -68,10 +70,12 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
   init: boolean = false;
   disabled: boolean = false;
 
-  rollingIndex: number[] = [];
-  rollingIndexPrev: number[] = [];
   compact: boolean = false;
   initServer: boolean = false;
+
+  bbCurrent: number = 0;
+  bbRows: number = 0;
+  activeAMs: AttackModifier[] = [];
 
   @ViewChild('drawCard') drawCard!: ElementRef;
 
@@ -92,18 +96,21 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
       this.characterIcon = this.character.iconUrl;
     } else {
       this.battleGoals = false;
+      this.characterIcon = "";
     }
     this.current = this.deck.current;
+    this.lastVisible = this.deck.lastVisible;
     this.compact = !this.drawing && this.fullscreen && settingsManager.settings.automaticAttackModifierFullscreen && settingsManager.settings.portraitMode && (window.innerWidth < 800 || window.innerHeight < 400);
 
-    this.deck.cards.forEach((card, index) => {
-      this.rollingIndex[index] = this.calcRollingIndex(index, this.current);
-      this.rollingIndexPrev[index] = this.calcRollingIndex(index, this.current - 1);
-    });
+    if (this.deck.bb) {
+      this.bbCurrent = Math.ceil((this.deck.current + 1) / 3);
+      this.bbRows = Math.ceil(this.deck.cards.length / 3);
+    }
 
     if (!this.init) {
       this.drawTimeout = setTimeout(() => {
         this.current = this.deck.current;
+        this.lastVisible = this.deck.lastVisible;
         this.drawTimeout = null;
         this.init = true;
       }, !settingsManager.settings.animations ? 0 : this.initTimeout)
@@ -147,6 +154,15 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
   }
 
   update(fromServer: boolean = false) {
+    if (this.character) {
+      this.deck = this.character.attackModifierDeck;
+      this.edition = this.character.edition;
+      this.numeration = "" + this.character.number;
+      this.characterIcon = this.character.iconUrl;
+    } else {
+      this.battleGoals = false;
+      this.characterIcon = "";
+    }
     this.disabled = !this.standalone && (!this.townGuard && gameManager.game.state == GameState.draw || this.townGuard && gameManager.game.scenario != undefined);
 
     if (this.character && this.deck != this.character.attackModifierDeck) {
@@ -165,14 +181,23 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
       this.queue = 0;
       this.drawing = false;
       this.current = this.deck.current;
+      this.lastVisible = this.deck.lastVisible;
       this.initServer = gameManager.stateManager.wsState() == WebSocket.OPEN;
     } else if (this.init && (!fromServer || this.initServer)) {
       if (this.current < this.deck.current) {
         this.queue = Math.max(0, this.deck.current - this.current);
         if (!this.queueTimeout) {
-          this.queue--;
-          this.current++;
-          this.drawQueue();
+          if (this.deck.bb) {
+            this.queue = 0;
+            this.current = this.deck.current;
+            this.lastVisible = this.deck.lastVisible;
+            this.drawQueue();
+          } else {
+            this.queue--;
+            this.current++;
+            this.lastVisible = this.deck.lastVisible;
+            this.drawQueue();
+          }
         }
       } else if (!this.queueTimeout || this.deck.current < this.current + this.queue) {
         if (this.queueTimeout) {
@@ -182,9 +207,11 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
         this.queue = 0;
         this.drawing = false;
         this.current = this.deck.current;
+        this.lastVisible = this.deck.lastVisible;
       }
     } else {
       this.current = this.deck.current;
+      this.lastVisible = this.deck.lastVisible;
       if (fromServer && !this.initServer) {
         this.initServer = true;
       }
@@ -194,12 +221,14 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
       this.newStyle = true;
     }
 
-    this.deck.cards.forEach((card, index) => {
-      this.rollingIndex[index] = this.calcRollingIndex(index, this.current);
-      this.rollingIndexPrev[index] = this.calcRollingIndex(index, this.current - 1);
-    });
+    if (this.deck.bb) {
+      this.bbCurrent = Math.ceil((this.current + 1) / 3);
+      this.bbRows = Math.ceil(this.deck.cards.length / 3);
+    }
 
     this.compact = settingsManager.settings.automaticAttackModifierFullscreen && settingsManager.settings.portraitMode && (window.innerWidth < 800 || window.innerHeight < 400);
+
+    this.activeAMs = this.deck.cards.filter((am, i) => am.active && i < this.deck.lastVisible && this.deck.discarded.indexOf(i) == -1);
   }
 
   drawQueue() {
@@ -221,21 +250,25 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
     }, !settingsManager.settings.animations ? 0 : (this.vertical ? 1050 : 1850));
   }
 
-  draw(event: any) {
+  draw(event: any, state: 'advantage' | 'disadvantage' | undefined = undefined) {
     if (this.compact && this.fullscreen) {
       this.openFullscreen(event);
     } else if (!this.disabled) {
       if (!this.drawTimeout && this.deck.current < (this.deck.cards.length - (this.queue == 0 ? 0 : 1))) {
         this.drawTimeout = setTimeout(() => {
-          this.before.emit(new AttackModiferDeckChange(this.deck, "draw"));
-          gameManager.attackModifierManager.drawModifier(this.deck);
-          this.after.emit(new AttackModiferDeckChange(this.deck, "draw"));
+          this.before.emit(new AttackModiferDeckChange(this.deck, "draw" + (state ? state : '')));
+          gameManager.attackModifierManager.drawModifier(this.deck, state);
+          this.after.emit(new AttackModiferDeckChange(this.deck, "draw" + (state ? state : '')));
           this.drawTimeout = null;
         }, !settingsManager.settings.animations ? 0 : 150)
+      } else if (!this.drawTimeout && this.deck.current >= this.deck.cards.length) {
+        this.before.emit(new AttackModiferDeckChange(this.deck, "shuffle"));
+        gameManager.attackModifierManager.shuffleModifiers(this.deck);
+        this.after.emit(new AttackModiferDeckChange(this.deck, "shuffle"));
       }
     } else {
       this.dialog.open(AttackModifierDeckDialogComponent, {
-        panelClass: 'dialog', data: {
+        panelClass: ['dialog'], data: {
           deck: this.deck,
           character: this.character,
           ally: this.ally,
@@ -251,7 +284,8 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
 
   openFullscreen(event: any) {
     this.dialog.open(AttackModifierDeckFullscreenComponent, {
-      backdropClass: 'fullscreen-backdrop',
+      panelClass: ['fullscreen-panel'],
+      backdropClass: ['fullscreen-backdrop'],
       data: {
         deck: this.deck,
         character: this.character,
@@ -268,46 +302,23 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
   }
 
   openBattleGoals(event: any): void {
-    this.dialog.open(CharacterBattleGoalsDialog, {
-      panelClass: ['dialog'],
-      data: { character: this.character, draw: !this.character.battleGoals || this.character.battleGoals.length == 0 }
-    });
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-
-  calcRollingIndex(index: number, current: number): number {
-    const am: AttackModifier = this.deck.cards[index];
-    if (!am.rolling || am.active && this.deck.disgarded.indexOf(index) != -1 || current < 0) {
-      return 0;
+    if (this.character) {
+      this.dialog.open(CharacterBattleGoalsDialog, {
+        panelClass: ['dialog'],
+        data: { character: this.character, draw: !this.character.battleGoals || this.character.battleGoals.length == 0 }
+      });
+      event.preventDefault();
+      event.stopPropagation();
     }
-
-    if (index == current - 2) {
-      return 2;
-    } else if (index < current - 2 && !am.active && this.deck.cards.slice(index, current - 1).every((attackModifier) => attackModifier.rolling)) {
-      return current - index;
-    } else if (index < current && am.active) {
-      let rolling = 0;
-      let rollingIndex = current - 2;
-      while (rollingIndex > -1 && this.deck.cards[rollingIndex].rolling && !this.deck.cards[rollingIndex].active) {
-        rollingIndex--;
-        rolling++;
-      }
-      return 1 + this.deck.cards.slice(index, current - 1).filter((attackModifier) => attackModifier.active && this.deck.disgarded.indexOf(this.deck.cards.indexOf(attackModifier)) == -1).length + rolling;
-    }
-
-    return 0;
   }
-
 
   clickCard(index: number, event: any) {
     if (!this.drawing || index > this.current) {
       const am: AttackModifier = this.deck.cards[index];
-      if (am.active && this.deck.disgarded.indexOf(index) == -1) {
-        this.before.emit(new AttackModiferDeckChange(this.deck, "disgard", "" + index));
-        this.deck.disgarded.push(index);
-        this.after.emit(new AttackModiferDeckChange(this.deck, "disgard", "" + index));
+      if (am.active && this.deck.discarded.indexOf(index) == -1) {
+        this.before.emit(new AttackModiferDeckChange(this.deck, "discard", "" + index));
+        this.deck.discarded.push(index);
+        this.after.emit(new AttackModiferDeckChange(this.deck, "discard", "" + index));
       } else {
         this.open(event);
       }
@@ -319,7 +330,7 @@ export class AttackModifierDeckComponent implements OnInit, OnDestroy, OnChanges
       this.openFullscreen(event);
     } else {
       this.dialog.open(AttackModifierDeckDialogComponent, {
-        panelClass: 'dialog', data: {
+        panelClass: ['dialog'], data: {
           deck: this.deck,
           character: this.character,
           ally: this.ally,
